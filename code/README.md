@@ -1,4 +1,4 @@
-# CarbonXchange - Financial-Grade Carbon Credit Trading Platform
+# CarbonXchange Code Directory
 
 ## Overview
 
@@ -10,41 +10,41 @@ The code directory is the central repository for all source code in the CarbonXc
 
 ```
 CarbonXchange/code/
-├── backend/                 # Flask-based API server
+├── backend/                               # Flask-based API server
 │   ├── src/
-│   │   ├── models/         # Database models with financial compliance
-│   │   ├── services/       # Advanced trading and risk management services
-│   │   ├── api/           # REST API endpoints with comprehensive documentation
-│   │   ├── security/      # Multi-layer security and authentication
-│   │   └── utils/         # Financial calculation utilities
-│   ├── tests/             # Comprehensive test suite (>90% coverage)
-│   ├── docs/              # Detailed API documentation
-│   └── requirements.txt   # Python dependencies
-├── web-frontend/           # React-based web application
+│   │   ├── models/                        # Database models with financial compliance
+│   │   ├── services/                      # Advanced trading and risk management services
+│   │   ├── api/                           # REST API endpoints with comprehensive documentation
+│   │   ├── security/                      # Multi-layer security and authentication
+│   │   └── utils/                         # Financial calculation utilities
+│   ├── tests/                             # Comprehensive test suite (>90% coverage)
+│   ├── docs/                              # Detailed API documentation
+│   └── requirements.txt                   # Python dependencies
+├── web-frontend/                          # React-based web application
 │   ├── src/
-│   │   ├── components/    # Professional trading components
-│   │   │   ├── Dashboard/ # Advanced trading dashboard
-│   │   │   ├── Analytics/ # Market analytics and charts
-│   │   │   └── Trading/   # Order management interface
-│   │   ├── pages/         # Application pages with modern UX
-│   │   ├── hooks/         # Custom React hooks for trading
-│   │   ├── utils/         # Financial calculation utilities
-│   │   └── styles/        # Tailwind CSS with custom design system
-│   ├── public/            # Static assets and PWA configuration
-│   ├── package.json       # Node.js dependencies
-│   └── tailwind.config.js # Custom Tailwind configuration
-├── blockchain/             # Smart contracts and blockchain integration
-│   ├── contracts/         # Advanced Solidity smart contracts
+│   │   ├── components/                    # Professional trading components
+│   │   │   ├── Dashboard/                 # Advanced trading dashboard
+│   │   │   ├── Analytics/                 # Market analytics and charts
+│   │   │   └── Trading/                   # Order management interface
+│   │   ├── pages/                         # Application pages with modern UX
+│   │   ├── hooks/                         # Custom React hooks for trading
+│   │   ├── utils/                         # Financial calculation utilities
+│   │   └── styles/                        # Tailwind CSS with custom design system
+│   ├── public/                            # Static assets and PWA configuration
+│   ├── package.json                       # Node.js dependencies
+│   └── tailwind.config.js                 # Custom Tailwind configuration
+├── blockchain/                            # Smart contracts and blockchain integration
+│   ├── contracts/                         # Advanced Solidity smart contracts
 │   │   ├── AdvancedCarbonCreditToken.sol  # Token contract
 │   │   └── AdvancedMarketplace.sol        # Sophisticated marketplace
-│   ├── scripts/           # Deployment and management scripts
-│   └── tests/             # Comprehensive contract tests
-└── ai_models/             # Machine learning models
-    ├── training_scripts/  # Advanced model training code
+│   ├── scripts/                           # Deployment and management scripts
+│   └── tests/                             # Comprehensive contract tests
+└── ai_models/                             # Machine learning models
+    ├── training_scripts/                  # Advanced model training code
     │   ├── train_forecasting_model.py     # Original forecasting
     │   └── advanced_forecasting_model.py  # Multi-algorithm
-    ├── models/            # Trained model files
-    └── data/              # Training and validation data
+    ├── models/                            # Trained model files
+    └── data/                              # Training and validation data
 ```
 
 ## 🛠️ Technology Stack
@@ -241,59 +241,3 @@ npm run test:integration
 - **SOX**: Financial reporting controls, audit trails, segregation of duties
 - **MiFID II**: Transaction reporting, best execution, investor protection
 - **AML/KYC**: Automated screening, risk scoring, ongoing monitoring
-
-## 🚀 Production Deployment
-
-### Docker Deployment
-
-```bash
-# Build and run with Docker Compose
-docker-compose up -d
-```
-
-### Kubernetes Deployment
-
-```bash
-# Apply Kubernetes manifests
-kubectl apply -f k8s/
-```
-
-### Cloud Deployment Options
-
-- **AWS**: ECS/EKS with RDS, ElastiCache, and CloudFront
-- **Azure**: AKS with Azure Database, Redis Cache, and CDN
-- **GCP**: GKE with Cloud SQL, Memorystore, and Cloud CDN
-
-## 📈 Performance & Scalability
-
-### Performance Benchmarks
-
-- **API Response Time**: <100ms for 95% of requests
-- **Trading Latency**: <50ms average order execution
-- **Throughput**: 10,000+ requests per second
-- **Concurrent Users**: 100,000+ simultaneous connections
-
-### Scalability Features
-
-- **Horizontal Scaling**: Auto-scaling based on demand
-- **Database Optimization**: Read replicas, connection pooling, query optimization
-- **Caching Strategy**: Multi-layer caching with Redis and CDN
-- **Load Balancing**: Intelligent routing with health checks
-
-## 🔍 Monitoring & Observability
-
-### Comprehensive Monitoring
-
-- **Application Metrics**: Response times, error rates, business KPIs
-- **Infrastructure Metrics**: CPU, memory, network, storage utilization
-- **Custom Dashboards**: Real-time trading metrics, risk indicators
-- **Alerting**: Intelligent alerts with escalation policies
-
-### Logging & Debugging
-
-- **Structured Logging**: JSON-formatted logs with correlation IDs
-- **Distributed Tracing**: Request tracing across microservices
-- **Error Tracking**: Real-time error monitoring with Sentry
-- **Performance Profiling**: Application performance insights
-
----
