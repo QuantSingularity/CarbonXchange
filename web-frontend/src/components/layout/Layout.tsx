@@ -1,8 +1,9 @@
-import React from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { LogOut } from "lucide-react";
+import type React from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { Button } from "../ui/button";
 import { Avatar, AvatarFallback } from "../ui/avatar";
+import { Button } from "../ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { LogOut } from "lucide-react";
 
 interface LayoutProps {
   children: React.ReactNode;

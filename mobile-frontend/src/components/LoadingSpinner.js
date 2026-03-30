@@ -1,5 +1,4 @@
-import React from "react";
-import { View, ActivityIndicator, StyleSheet, Text } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import theme from "../styles/theme";
 
 const LoadingSpinner = ({ message = "Loading...", size = "large", style }) => {

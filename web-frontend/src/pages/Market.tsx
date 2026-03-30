@@ -1,5 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { getCarbonCredits } from "../services/api";
+import { Loader2, Search, TrendingUp } from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
 import {
   Card,
   CardContent,
@@ -7,11 +11,8 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { Badge } from "../components/ui/badge";
 import { Input } from "../components/ui/input";
-import { Loader2, Search, TrendingUp } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { getCarbonCredits } from "../services/api";
 
 interface CarbonCredit {
   id: string;
@@ -34,7 +35,7 @@ const Market: React.FC = () => {
 
   useEffect(() => {
     loadCredits();
-  }, []);
+  }, [loadCredits]);
 
   const loadCredits = async () => {
     try {

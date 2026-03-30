@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from "react";
+import { ArrowDownIcon, ArrowUpIcon } from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import {
-  subscribeToMarketData,
   getMarketStats,
   getMockMarketStats,
   isUsingMockData,
+  subscribeToMarketData,
 } from "../services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
 
 interface MarketStatsProps {
   className?: string;
@@ -30,7 +31,7 @@ const MarketStats: React.FC<MarketStatsProps> = ({ className }) => {
 
     // Set up real-time updates
     const unsubscribe = subscribeToMarketData((data) => {
-      if (data && data.price) {
+      if (data?.price) {
         setStats((prevStats) => {
           if (!prevStats) return null;
 
@@ -59,7 +60,7 @@ const MarketStats: React.FC<MarketStatsProps> = ({ className }) => {
       unsubscribe();
       clearInterval(intervalId);
     };
-  }, []);
+  }, [fetchMarketStats]);
 
   const fetchMarketStats = async () => {
     setLoading(true);

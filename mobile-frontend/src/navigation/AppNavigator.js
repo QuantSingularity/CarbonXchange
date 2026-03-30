@@ -1,14 +1,13 @@
-import React from "react";
-import { Platform } from "react-native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import CreditsListScreen from "../screens/Main/CreditsListScreen";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { Platform } from "react-native";
 import CreditDetailScreen from "../screens/Main/CreditDetailScreen";
-import TradingScreen from "../screens/Main/TradingScreen";
+import CreditsListScreen from "../screens/Main/CreditsListScreen";
 import MarketDataScreen from "../screens/Main/MarketDataScreen";
-import WalletScreen from "../screens/Main/WalletScreen";
 import TradeHistoryScreen from "../screens/Main/TradeHistoryScreen"; // Import the new screen
+import TradingScreen from "../screens/Main/TradingScreen";
+import WalletScreen from "../screens/Main/WalletScreen";
 import theme from "../styles/theme"; // Import theme for styling
 
 const Stack = createNativeStackNavigator();

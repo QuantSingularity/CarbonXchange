@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import CarbonPriceChart from "./charts/CarbonPriceChart";
 import TradingVolumeChart from "./charts/TradingVolumeChart";
 import MarketStats from "./MarketStats";

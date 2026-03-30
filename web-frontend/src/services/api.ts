@@ -1,5 +1,5 @@
 import axios from "axios";
-import { io, Socket } from "socket.io-client";
+import { io, type Socket } from "socket.io-client";
 
 // Define the base URL for the API - use import.meta.env for Vite
 const API_BASE_URL =
@@ -477,7 +477,7 @@ export const getMockHistoricalData = (
 
   // Base price and volume with some randomness
   let basePrice = 25;
-  let baseVolume = 2500;
+  const baseVolume = 2500;
 
   // Generate data points
   for (let i = count - 1; i >= 0; i--) {
@@ -540,7 +540,7 @@ export class MockSocket {
 
   emit(event: string) {
     if (event === "subscribe_market_data") {
-      this.intervalIds["market_data"] = setInterval(() => {
+      this.intervalIds.market_data = setInterval(() => {
         const lastPrice = 25 + Math.random() * 5;
         const priceChange = (Math.random() - 0.48) * 0.2;
         const newPrice = Math.max(lastPrice + priceChange, 10);
@@ -556,7 +556,7 @@ export class MockSocket {
     }
 
     if (event === "subscribe_volume_data") {
-      this.intervalIds["volume_data"] = setInterval(() => {
+      this.intervalIds.volume_data = setInterval(() => {
         const baseVolume = 2500;
         const volumeNoise = Math.random() * 0.4 + 0.8;
         const volume = Math.floor(baseVolume * volumeNoise);
@@ -571,16 +571,16 @@ export class MockSocket {
     }
 
     if (event === "unsubscribe_market_data") {
-      if (this.intervalIds["market_data"]) {
-        clearInterval(this.intervalIds["market_data"]);
-        delete this.intervalIds["market_data"];
+      if (this.intervalIds.market_data) {
+        clearInterval(this.intervalIds.market_data);
+        delete this.intervalIds.market_data;
       }
     }
 
     if (event === "unsubscribe_volume_data") {
-      if (this.intervalIds["volume_data"]) {
-        clearInterval(this.intervalIds["volume_data"]);
-        delete this.intervalIds["volume_data"];
+      if (this.intervalIds.volume_data) {
+        clearInterval(this.intervalIds.volume_data);
+        delete this.intervalIds.volume_data;
       }
     }
   }

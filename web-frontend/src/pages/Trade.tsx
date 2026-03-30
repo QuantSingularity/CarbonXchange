@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import {
-  getCarbonCreditById,
-  createOrder,
-  getCarbonCredits,
-} from "../services/api";
+import { ArrowLeftRight, Loader2 } from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Alert, AlertDescription } from "../components/ui/alert";
+import { Button } from "../components/ui/button";
 import {
   Card,
   CardContent,
@@ -12,13 +11,15 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
-import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import { Alert, AlertDescription } from "../components/ui/alert";
-import { Loader2, ArrowLeftRight } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import {
+  createOrder,
+  getCarbonCreditById,
+  getCarbonCredits,
+} from "../services/api";
 
 const Trade: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -40,7 +41,7 @@ const Trade: React.FC = () => {
       return;
     }
     loadCredit();
-  }, [creditId, isAuthenticated]);
+  }, [isAuthenticated, loadCredit, navigate]);
 
   const loadCredit = async () => {
     try {
@@ -68,7 +69,7 @@ const Trade: React.FC = () => {
     setError("");
     setSuccess("");
 
-    if (!quantity || parseInt(quantity) <= 0) {
+    if (!quantity || parseInt(quantity, 10) <= 0) {
       setError("Please enter a valid quantity");
       return;
     }
@@ -83,7 +84,7 @@ const Trade: React.FC = () => {
     try {
       await createOrder({
         creditId: credit.id,
-        quantity: parseInt(quantity),
+        quantity: parseInt(quantity, 10),
         orderType,
         price: credit.price,
       });
@@ -124,7 +125,7 @@ const Trade: React.FC = () => {
     );
   }
 
-  const totalCost = credit.price * (parseInt(quantity) || 0);
+  const totalCost = credit.price * (parseInt(quantity, 10) || 0);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

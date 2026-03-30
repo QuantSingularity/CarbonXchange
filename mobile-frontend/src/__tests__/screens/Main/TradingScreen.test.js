@@ -1,12 +1,11 @@
-import React from "react";
-import { render, waitFor, fireEvent } from "@testing-library/react-native";
-import { Provider } from "react-redux";
 import { NavigationContainer } from "@react-navigation/native";
 import { configureStore } from "@reduxjs/toolkit";
-import authReducer from "../../../store/slices/authSlice";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { Alert } from "react-native";
+import { Provider } from "react-redux";
 import TradingScreen from "../../../screens/Main/TradingScreen";
 import * as api from "../../../services/api"; // To mock API calls
-import { Alert } from "react-native";
+import authReducer from "../../../store/slices/authSlice";
 
 // Mock navigation with goBack
 const mockNavigation = { navigate: jest.fn(), goBack: jest.fn() };

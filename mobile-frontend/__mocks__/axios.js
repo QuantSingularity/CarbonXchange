@@ -2,13 +2,13 @@
 
 const mockPost = jest.fn();
 const mockGet = jest.fn();
-const mockRequestUse = jest.fn((successCb, errorCb) => {
+const mockRequestUse = jest.fn((successCb, _errorCb) => {
   // Default behavior: call success callback. Can be overridden in tests if error path needs to be tested.
   // The successCb should be called with a config object.
   if (successCb) return Promise.resolve(successCb({ headers: {} }));
   return Promise.resolve({ headers: {} }); // Fallback
 });
-const mockResponseUse = jest.fn((successCb, errorCb) => {
+const mockResponseUse = jest.fn((successCb, _errorCb) => {
   // Default behavior: call success callback. Can be overridden in tests if error path needs to be tested.
   // The successCb should be called with a response object.
   if (successCb) return Promise.resolve(successCb({ data: {} }));

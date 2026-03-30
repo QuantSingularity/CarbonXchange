@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
   ActivityIndicator,
-  TouchableOpacity,
-  ScrollView,
   Alert,
   Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { getCreditById } from "../../services/api";
 import theme from "../../styles/theme"; // Import the theme
@@ -228,11 +228,11 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
   },
   statusAvailable: {
-    backgroundColor: theme.colors.success + "30",
+    backgroundColor: `${theme.colors.success}30`,
     color: theme.colors.success,
   },
   statusOther: {
-    backgroundColor: theme.colors.disabled + "50",
+    backgroundColor: `${theme.colors.disabled}50`,
     color: theme.colors.textSecondary,
   },
   card: {

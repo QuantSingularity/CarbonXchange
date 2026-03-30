@@ -1,11 +1,10 @@
-import React from "react";
-import { render, waitFor } from "@testing-library/react-native";
-import { Provider } from "react-redux";
 import { NavigationContainer } from "@react-navigation/native";
 import { configureStore } from "@reduxjs/toolkit";
-import authReducer from "../../../store/slices/authSlice";
+import { render, waitFor } from "@testing-library/react-native";
+import { Provider } from "react-redux";
 import MarketDataScreen from "../../../screens/Main/MarketDataScreen";
 import * as api from "../../../services/api";
+import authReducer from "../../../store/slices/authSlice";
 
 // Mock API service
 jest.mock("../../../services/api", () => ({

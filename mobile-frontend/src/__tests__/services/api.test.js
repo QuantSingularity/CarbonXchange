@@ -8,26 +8,26 @@ jest.mock("expo-secure-store", () => ({
 // __mocks__/axios.js will be used automatically by Jest since we are importing "axios"
 // and there is no explicit jest.mock("axios", ...) in this file anymore.
 
-// Import the SUT (System Under Test).
-// IMPORTANT: This must come AFTER jest.mock for SecureStore and implicitly after __mocks__/axios.js is set to be used.
-import {
-  login,
-  register,
-  logoutUser,
-  getCredits,
-  createCredit,
-  getCreditById,
-  createTrade,
-  getUserTrades,
-  getMarketStats,
-  getMarketForecast,
-  getWalletBalance,
-} from "../../services/api";
+// Import the mocked axios to get references to the mock functions from __mocks__/axios.js
+import axios from "axios";
 
 // Import the mocked SecureStore to allow clearing/resetting its functions
 import * as SecureStore from "expo-secure-store";
-// Import the mocked axios to get references to the mock functions from __mocks__/axios.js
-import axios from "axios";
+// Import the SUT (System Under Test).
+// IMPORTANT: This must come AFTER jest.mock for SecureStore and implicitly after __mocks__/axios.js is set to be used.
+import {
+  createCredit,
+  createTrade,
+  getCreditById,
+  getCredits,
+  getMarketForecast,
+  getMarketStats,
+  getUserTrades,
+  getWalletBalance,
+  login,
+  logoutUser,
+  register,
+} from "../../services/api";
 
 describe("Mobile API Service", () => {
   // Get references to the mock functions from the auto-mocked axios instance.
@@ -46,7 +46,7 @@ describe("Mobile API Service", () => {
 
     // Reset mockRequestUse to its default successful behavior from __mocks__/axios.js
     // The implementation in __mocks__/axios.js is: (successCb, errorCb) => { if (successCb) return Promise.resolve(successCb({ headers: {} })); return Promise.resolve({ headers: {} }); }
-    mockRequestUse.mockClear().mockImplementation((successCb, errorCb) => {
+    mockRequestUse.mockClear().mockImplementation((successCb, _errorCb) => {
       if (successCb) return Promise.resolve(successCb({ headers: {} }));
       return Promise.resolve({ headers: {} });
     });

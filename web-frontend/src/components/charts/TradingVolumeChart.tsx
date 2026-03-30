@@ -1,21 +1,22 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { Loader2 } from "lucide-react";
+import type React from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  ResponsiveContainer,
-  BarChart,
+  Area,
   Bar,
+  BarChart,
+  Brush,
+  CartesianGrid,
+  ComposedChart,
+  Legend,
+  Line,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  Brush,
-  ComposedChart,
-  Line,
-  Area,
 } from "recharts";
-import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
-import { Loader2 } from "lucide-react";
+import { Card, CardContent } from "../ui/card";
 
 interface DataPoint {
   timestamp: number;
@@ -65,7 +66,7 @@ const TradingVolumeChart: React.FC = () => {
 
       // Base price and volume with some randomness
       let basePrice = 25;
-      let baseVolume = 2500;
+      const baseVolume = 2500;
 
       // Generate data points
       for (let i = count - 1; i >= 0; i--) {
@@ -224,7 +225,7 @@ const TradingVolumeChart: React.FC = () => {
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
+    if (active && payload?.length) {
       return (
         <Card className="bg-background border shadow-md">
           <CardContent className="p-3">

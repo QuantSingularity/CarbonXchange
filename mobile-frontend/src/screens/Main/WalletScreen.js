@@ -1,19 +1,18 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { useCallback, useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
   ActivityIndicator,
-  TouchableOpacity,
+  Alert,
   FlatList,
   RefreshControl,
-  Alert,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { getWalletBalance, getUserTrades } from "../../services/api";
-import theme from "../../styles/theme"; // Import the theme
-import { useSelector, useDispatch } from "react-redux";
+import { getUserTrades, getWalletBalance } from "../../services/api";
 import { logout } from "../../store/slices/authSlice";
-import { Ionicons } from "@expo/vector-icons";
+import theme from "../../styles/theme"; // Import the theme
 
 const WalletScreen = ({ navigation }) => {
   const [balance, setBalance] = useState(null);

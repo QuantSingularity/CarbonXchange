@@ -1,14 +1,15 @@
-import React, {
+import type React from "react";
+import {
   createContext,
+  type ReactNode,
   useContext,
-  useState,
   useEffect,
-  ReactNode,
+  useState,
 } from "react";
 import {
   login as apiLogin,
-  register as apiRegister,
   logout as apiLogout,
+  register as apiRegister,
   getCurrentUser,
 } from "../services/api";
 
@@ -53,7 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } else {
       setLoading(false);
     }
-  }, []);
+  }, [loadUser]);
 
   const loadUser = async () => {
     try {

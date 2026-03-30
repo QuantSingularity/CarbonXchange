@@ -1,14 +1,14 @@
+import * as api from "../../../services/api"; // To mock API calls for thunks
 import authReducer, {
   loginUser,
-  registerUser,
   logout, // Assuming this is the action for logout
+  registerUser,
   resetAuthError,
-  setLoading,
   setError,
+  setLoading,
   setLoggedIn,
   setUser,
 } from "../../../store/slices/authSlice";
-import * as api from "../../../services/api"; // To mock API calls for thunks
 
 // Mock API service for thunks
 jest.mock("../../../services/api");

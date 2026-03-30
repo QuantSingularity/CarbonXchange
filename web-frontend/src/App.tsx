@@ -1,21 +1,20 @@
 import {
+  Navigate,
+  Route,
   BrowserRouter as Router,
   Routes,
-  Route,
-  Navigate,
 } from "react-router-dom";
-import { ThemeProvider } from "./components/theme-provider";
-import { AuthProvider } from "./contexts/AuthContext";
+import Dashboard from "./components/Dashboard";
 import Layout from "./components/layout/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
-
+import { ThemeProvider } from "./components/theme-provider";
+import { AuthProvider } from "./contexts/AuthContext";
 // Pages
 import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Dashboard from "./components/Dashboard";
 import Market from "./pages/Market";
-import Trade from "./pages/Trade";
 import Portfolio from "./pages/Portfolio";
+import Register from "./pages/Register";
+import Trade from "./pages/Trade";
 
 function App() {
   return (

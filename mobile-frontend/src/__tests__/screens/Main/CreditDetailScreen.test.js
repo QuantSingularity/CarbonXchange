@@ -1,11 +1,10 @@
-import React from "react";
-import { render, waitFor, fireEvent } from "@testing-library/react-native";
-import { Provider } from "react-redux";
 import { NavigationContainer } from "@react-navigation/native";
 import { configureStore } from "@reduxjs/toolkit";
-import authReducer from "../../../store/slices/authSlice";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { Provider } from "react-redux";
 import CreditDetailScreen from "../../../screens/Main/CreditDetailScreen";
 import * as api from "../../../services/api";
+import authReducer from "../../../store/slices/authSlice";
 
 // Mock navigation
 const mockNavigation = { navigate: jest.fn() };

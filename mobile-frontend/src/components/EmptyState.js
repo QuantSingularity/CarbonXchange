@@ -1,6 +1,5 @@
-import React from "react";
-import { View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { StyleSheet, Text, View } from "react-native";
 import theme from "../styles/theme";
 
 const EmptyState = ({

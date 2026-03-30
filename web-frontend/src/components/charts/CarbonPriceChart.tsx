@@ -1,18 +1,19 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { Loader2 } from "lucide-react";
+import type React from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  ResponsiveContainer,
-  LineChart,
+  Brush,
+  CartesianGrid,
+  Legend,
   Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  Brush,
 } from "recharts";
-import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
-import { Loader2 } from "lucide-react";
+import { Card, CardContent } from "../ui/card";
 
 interface DataPoint {
   timestamp: number;
@@ -177,7 +178,7 @@ const CarbonPriceChart: React.FC = () => {
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
+    if (active && payload?.length) {
       return (
         <Card className="bg-background border shadow-md">
           <CardContent className="p-3">

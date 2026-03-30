@@ -1,9 +1,9 @@
-import React from "react";
-import { render, fireEvent, waitFor } from "@testing-library/react-native";
-import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
-import authReducerActual, * as authSliceModule from "../../../store/slices/authSlice"; // Import the actual reducer and the module
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { Provider } from "react-redux";
 import LoginScreen from "../../../screens/Auth/LoginScreen";
+import authReducerActual from "../../../store/slices/authSlice"; // Import the actual reducer and the module
+
 // theme import might be needed if LoginScreen uses it directly or via styled components not covered by snapshot
 // import theme from "../../../styles/theme";
 
@@ -12,7 +12,7 @@ const mockNavigate = jest.fn();
 const mockNavigation = { navigate: mockNavigate };
 
 // Create mock functions for the actions we want to spy on or control
-const mockLoginUserImplementation = (credentials) => (dispatch) => {
+const mockLoginUserImplementation = (_credentials) => (_dispatch) => {
   // Simulate thunk behavior, can return a promise
   // For testing, we can check if this is called with correct args
   // and simulate success/failure by how the promise resolves/rejects if needed by component logic

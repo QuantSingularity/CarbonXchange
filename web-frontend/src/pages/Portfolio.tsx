@@ -1,5 +1,13 @@
-import React, { useState, useEffect } from "react";
-import { getPortfolio, getMyOrders } from "../services/api";
+import {
+  DollarSign,
+  Loader2,
+  Package,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
+import { Badge } from "../components/ui/badge";
 import {
   Card,
   CardContent,
@@ -7,20 +15,13 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
-import {
-  Loader2,
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  Package,
-} from "lucide-react";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "../components/ui/tabs";
+import { getMyOrders, getPortfolio } from "../services/api";
 
 interface Holding {
   creditId: string;
@@ -51,7 +52,7 @@ const Portfolio: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const loadData = async () => {
     try {

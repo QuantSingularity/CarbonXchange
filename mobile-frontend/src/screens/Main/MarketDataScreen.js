@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
   ActivityIndicator,
-  TouchableOpacity,
-  ScrollView,
   Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { getMarketStats, getMarketForecast } from "../../services/api";
-import theme from "../../styles/theme"; // Import the theme
 // Import the chart component
 import { LineChart } from "react-native-chart-kit";
+import { getMarketForecast, getMarketStats } from "../../services/api";
+import theme from "../../styles/theme"; // Import the theme
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -115,7 +115,7 @@ const MarketDataScreen = () => {
     decimalPlaces: 2, // optional, defaults to 2dp
     color: (opacity = 1) =>
       `rgba(${parseInt(theme.colors.primary.slice(1, 3), 16)}, ${parseInt(theme.colors.primary.slice(3, 5), 16)}, ${parseInt(theme.colors.primary.slice(5, 7), 16)}, ${opacity})`, // Use theme primary color
-    labelColor: (opacity = 1) => theme.colors.textSecondary, // Use secondary text color for labels
+    labelColor: (_opacity = 1) => theme.colors.textSecondary, // Use secondary text color for labels
     style: {
       borderRadius: 16,
     },
@@ -131,7 +131,7 @@ const MarketDataScreen = () => {
   };
 
   // Default chart data for initial render or error states
-  const defaultChartData = {
+  const _defaultChartData = {
     labels: ["N/A"],
     datasets: [
       {

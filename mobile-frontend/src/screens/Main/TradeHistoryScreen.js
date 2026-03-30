@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
   ActivityIndicator,
-  TouchableOpacity,
+  FlatList,
   RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { getUserTrades } from "../../services/api"; // Import the API function
 import theme from "../../styles/theme"; // Import the theme
@@ -231,11 +231,11 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   buyType: {
-    backgroundColor: theme.colors.success + "30",
+    backgroundColor: `${theme.colors.success}30`,
     color: theme.colors.success,
   },
   sellType: {
-    backgroundColor: theme.colors.error + "30",
+    backgroundColor: `${theme.colors.error}30`,
     color: theme.colors.error,
   },
   tradeItemDate: {

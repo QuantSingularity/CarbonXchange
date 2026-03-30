@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
   ActivityIndicator,
-  TouchableOpacity,
+  FlatList,
   RefreshControl,
+  StyleSheet,
+  Text,
   TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { getCredits } from "../../services/api";
 import theme from "../../styles/theme"; // Import the theme
@@ -295,11 +295,11 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
   },
   statusAvailable: {
-    backgroundColor: theme.colors.success + "30",
+    backgroundColor: `${theme.colors.success}30`,
     color: theme.colors.success,
   },
   statusOther: {
-    backgroundColor: theme.colors.disabled + "50",
+    backgroundColor: `${theme.colors.disabled}50`,
     color: theme.colors.textSecondary,
   },
   itemRow: {

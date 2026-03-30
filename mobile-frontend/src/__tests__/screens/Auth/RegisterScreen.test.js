@@ -1,14 +1,13 @@
-import React from "react";
-import { render, fireEvent, waitFor } from "@testing-library/react-native";
-import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
-import authReducerActual, * as authSliceModule from "../../../store/slices/authSlice";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { Provider } from "react-redux";
 import RegisterScreen from "../../../screens/Auth/RegisterScreen";
+import authReducerActual from "../../../store/slices/authSlice";
 
 const mockNavigate = jest.fn();
 const mockNavigation = { navigate: mockNavigate, goBack: jest.fn() };
 
-const mockRegisterUserImplementation = (userData) => (dispatch) => {
+const mockRegisterUserImplementation = (_userData) => (_dispatch) => {
   return Promise.resolve({
     type: "auth/registerUser/fulfilled",
     payload: { user: "testUser", token: "testToken" },

@@ -1,8 +1,8 @@
-import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
-import Login from "../src/pages/Login";
+import { describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "../src/contexts/AuthContext";
+import Login from "../src/pages/Login";
 
 // Mock the API
 vi.mock("../src/services/api", () => ({

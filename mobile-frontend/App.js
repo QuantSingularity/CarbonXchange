@@ -1,12 +1,12 @@
-import React, { useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
-import { Provider, useSelector, useDispatch } from "react-redux";
 import { StatusBar } from "expo-status-bar";
-import store from "./src/store";
+import { useEffect } from "react";
+import { Provider, useDispatch, useSelector } from "react-redux";
+import ErrorBoundary from "./src/components/ErrorBoundary";
 import AppNavigator from "./src/navigation/AppNavigator";
 import AuthNavigator from "./src/navigation/AuthNavigator";
 import LoadingScreen from "./src/screens/LoadingScreen";
-import ErrorBoundary from "./src/components/ErrorBoundary";
+import store from "./src/store";
 import { rehydrateAuth } from "./src/store/slices/authSlice";
 
 const RootNavigator = () => {

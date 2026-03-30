@@ -1,15 +1,15 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { createTrade } from "../../services/api";
 import theme from "../../styles/theme"; // Import the theme
@@ -25,7 +25,7 @@ const TradingScreen = ({ route, navigation }) => {
     setError(null);
     const tradeAmount = parseFloat(amount); // Use parseFloat for potentially fractional amounts
 
-    if (isNaN(tradeAmount) || tradeAmount <= 0) {
+    if (Number.isNaN(tradeAmount) || tradeAmount <= 0) {
       Alert.alert("Error", "Please enter a valid positive amount.");
       return;
     }
@@ -78,7 +78,11 @@ const TradingScreen = ({ route, navigation }) => {
   const calculatedTotal = () => {
     const tradeAmount = parseFloat(amount);
     const currentPrice = parseFloat(price);
-    if (!isNaN(tradeAmount) && !isNaN(currentPrice) && tradeAmount > 0) {
+    if (
+      !Number.isNaN(tradeAmount) &&
+      !Number.isNaN(currentPrice) &&
+      tradeAmount > 0
+    ) {
       return (tradeAmount * currentPrice).toFixed(2);
     }
     return "0.00";
