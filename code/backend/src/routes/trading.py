@@ -101,7 +101,7 @@ def create_order() -> Any:
             },
         )
         if not compliance_check["approved"]:
-            return jsonify({"error": f"Order rejected: compliance check failed"}), 400
+            return jsonify({"error": "Order rejected: compliance check failed"}), 400
 
         order = Order(
             user_id=user.id,

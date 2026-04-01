@@ -140,7 +140,7 @@ def sample_credit(db_session: Any, sample_project: Any, app: Any) -> Any:
     with app.app_context():
         credit = CarbonCredit(
             project_id=sample_project.id,
-            serial_number=f"CC-TEST-001",
+            serial_number="CC-TEST-001",
             vintage_year=2023,
             quantity=Decimal("100"),
             status=CreditStatus.AVAILABLE,

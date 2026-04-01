@@ -6,7 +6,7 @@ Implements enterprise-grade authentication with financial industry security stan
 import hashlib
 import logging
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 import pyotp

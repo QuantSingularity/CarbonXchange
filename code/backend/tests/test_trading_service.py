@@ -3,7 +3,7 @@ Comprehensive tests for Trading Service
 Tests all trading functionality with financial industry standards
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 from unittest.mock import patch

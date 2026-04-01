@@ -4,7 +4,7 @@ Implements sophisticated portfolio management, optimization, and analytics
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
@@ -451,7 +451,7 @@ class PortfolioService:
                 vintage_year=holding.vintage_year,
             )
             return pricing_result.get("price", holding.average_cost)
-        except:
+        except Exception:
             return holding.average_cost
 
     def _calculate_performance_metrics(self, portfolio: Portfolio) -> Dict[str, Any]:
@@ -573,7 +573,7 @@ class PortfolioService:
                 efficient_frontier.append(
                     {"return": float(portfolio_return), "risk": float(portfolio_risk)}
                 )
-            except:
+            except Exception:
                 continue
         return efficient_frontier
 

@@ -4,7 +4,7 @@ Implements sophisticated pricing models and market data analysis for carbon cred
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Dict, List, Optional, Tuple
 

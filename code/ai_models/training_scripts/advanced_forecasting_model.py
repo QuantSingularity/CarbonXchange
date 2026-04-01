@@ -4,10 +4,13 @@ Implements multiple machine learning algorithms for carbon credit price predicti
 and market analysis with financial industry standards
 """
 
+import warnings
+
+warnings.filterwarnings("ignore")
+
 import json
 import logging
 import os
-import warnings
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Tuple
@@ -15,8 +18,6 @@ from typing import Any, Dict, List, Tuple
 import joblib
 import numpy as np
 import pandas as pd
-
-warnings.filterwarnings("ignore")
 from sklearn.ensemble import (
     GradientBoostingRegressor,
     RandomForestRegressor,

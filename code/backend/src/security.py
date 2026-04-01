@@ -121,7 +121,7 @@ def audit_log_required(action: AuditAction, resource_type: str) -> Any:
                         user = User.query.filter_by(uuid=current_user_uuid).first()
                         if user:
                             user_id = user.id
-                except:
+                except Exception:
                     pass
                 result = f(*args, **kwargs)
                 return result
