@@ -14,11 +14,12 @@ resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = var.public_subnet_cidrs[count.index]
   availability_zone       = var.availability_zones[count.index]
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false
 
   tags = {
-    Name        = "${var.environment}-public-subnet-${count.index + 1}"
-    Environment = var.environment
+    Name                     = "${var.environment}-public-subnet-${count.index + 1}"
+    Environment              = var.environment
+    "kubernetes.io/role/elb" = "1"
   }
 }
 
@@ -29,8 +30,9 @@ resource "aws_subnet" "private" {
   availability_zone = var.availability_zones[count.index]
 
   tags = {
-    Name        = "${var.environment}-private-subnet-${count.index + 1}"
-    Environment = var.environment
+    Name                              = "${var.environment}-private-subnet-${count.index + 1}"
+    Environment                       = var.environment
+    "kubernetes.io/role/internal-elb" = "1"
   }
 }
 
@@ -44,13 +46,15 @@ resource "aws_internet_gateway" "main" {
 }
 
 resource "aws_eip" "nat" {
-  count = length(var.public_subnet_cidrs)
-  vpc   = true
+  count  = length(var.public_subnet_cidrs)
+  domain = "vpc"
 
   tags = {
     Name        = "${var.environment}-nat-eip-${count.index + 1}"
     Environment = var.environment
   }
+
+  depends_on = [aws_internet_gateway.main]
 }
 
 resource "aws_nat_gateway" "main" {
@@ -105,4 +109,61 @@ resource "aws_route_table_association" "private" {
   count          = length(var.private_subnet_cidrs)
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private[count.index].id
+}
+
+resource "aws_vpc_flow_log" "main" {
+  iam_role_arn    = aws_iam_role.flow_log.arn
+  log_destination = aws_cloudwatch_log_group.flow_log.arn
+  traffic_type    = "ALL"
+  vpc_id          = aws_vpc.main.id
+
+  tags = {
+    Name        = "${var.environment}-vpc-flow-log"
+    Environment = var.environment
+  }
+}
+
+resource "aws_cloudwatch_log_group" "flow_log" {
+  name              = "/aws/vpc/${var.environment}-flow-logs"
+  retention_in_days = 90
+
+  tags = {
+    Name        = "${var.environment}-vpc-flow-logs"
+    Environment = var.environment
+  }
+}
+
+resource "aws_iam_role" "flow_log" {
+  name = "${var.environment}-vpc-flow-log-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "vpc-flow-logs.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "flow_log" {
+  name = "${var.environment}-vpc-flow-log-policy"
+  role = aws_iam_role.flow_log.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams"
+      ]
+      Effect   = "Allow"
+      Resource = "*"
+    }]
+  })
 }

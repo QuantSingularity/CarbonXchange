@@ -2,25 +2,53 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: "{{ .Values.appName }}-database"
+  namespace: '{{ .Values.namespace | default "carbonxchange" }}'
   labels:
     app: "{{ .Values.appName }}-database"
+    component: database
+    tier: data
+    environment: "{{ .Values.environment }}"
 spec:
   serviceName: "{{ .Values.appName }}-database"
   replicas: { { .Values.database.replicas } }
   selector:
     matchLabels:
       app: "{{ .Values.appName }}-database"
+      component: database
   template:
     metadata:
       labels:
         app: "{{ .Values.appName }}-database"
+        component: database
+        tier: data
+        environment: "{{ .Values.environment }}"
     spec:
+      serviceAccountName: "{{ .Values.appName }}-backend-sa"
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: "{{ .Values.appName }}-database"
           image: "{{ .Values.database.image.repository }}:{{ .Values.database.image.tag }}"
           imagePullPolicy: "{{ .Values.database.image.pullPolicy }}"
           ports:
-            - containerPort: { { .Values.database.containerPort } }
+            - name: mysql
+              containerPort: { { .Values.database.containerPort } }
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            capabilities:
+              drop:
+                - ALL
           resources:
             limits:
               cpu: "{{ .Values.database.resources.limits.cpu }}"
@@ -46,25 +74,32 @@ spec:
           volumeMounts:
             - name: "{{ .Values.appName }}-database-data"
               mountPath: /var/lib/mysql
+            - name: tmp
+              mountPath: /tmp
           livenessProbe:
             exec:
               command:
-                ["mysqladmin", "ping", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+                - sh
+                - -c
+                - "mysqladmin ping -u root -p${MYSQL_ROOT_PASSWORD}"
             initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           readinessProbe:
             exec:
               command:
-                [
-                  "mysql",
-                  "-u",
-                  "root",
-                  "-p${MYSQL_ROOT_PASSWORD}",
-                  "-e",
-                  "SELECT 1",
-                ]
+                - sh
+                - -c
+                - "mysql -u root -p${MYSQL_ROOT_PASSWORD} -e 'SELECT 1'"
             initialDelaySeconds: 5
             periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      terminationGracePeriodSeconds: 60
   volumeClaimTemplates:
     - metadata:
         name: "{{ .Values.appName }}-database-data"

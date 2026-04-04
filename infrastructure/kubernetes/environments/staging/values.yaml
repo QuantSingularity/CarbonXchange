@@ -1,7 +1,13 @@
 appName: carbonxchange
+namespace: carbonxchange
 environment: staging
 
-# Backend configuration
+aws:
+  region: us-west-2
+  kmsKeyId: ""
+  s3Bucket: "carbonxchange-staging-assets"
+  cloudwatchLogGroup: "/carbonxchange/staging"
+
 backend:
   replicas: 3
   image:
@@ -17,11 +23,67 @@ backend:
     requests:
       cpu: 500m
       memory: 512Mi
-  apiUrl: http://app-backend
-  jwtSecret: staging-jwt-secret
-  apiKey: staging-api-key
+  apiUrl: http://carbonxchange-backend
+  jwtSecret: staging-jwt-secret-change-in-vault
+  apiKey: staging-api-key-change-in-vault
+  encryptionKey: staging-encryption-key-32-chars!!!
+  apiKeySalt: staging-api-key-salt-change-in-vault
+  corsOrigins: "https://staging.carbonxchange.example.com"
+  logLevel: info
+  metrics:
+    port: 9090
+    path: /metrics
+  health:
+    port: 8080
+    livenessPath: /health/live
+    readinessPath: /health/ready
+    startupPath: /health/startup
+    livenessProbe:
+      initialDelaySeconds: 60
+      periodSeconds: 30
+      timeoutSeconds: 10
+      failureThreshold: 3
+      successThreshold: 1
+    readinessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
+    startupProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      timeoutSeconds: 1
+      failureThreshold: 60
+  strategy:
+    maxSurge: "25%"
+    maxUnavailable: "25%"
+  rateLimit:
+    windowMs: "900000"
+    maxRequests: "100"
+  session:
+    timeoutMinutes: "30"
+  security:
+    maxLoginAttempts: "5"
+    lockoutDurationMinutes: "15"
+    passwordMinLength: "12"
+    requireMFA: "true"
+    enableTransactionSigning: "true"
+  compliance:
+    dataRetentionDays: "2555"
+    auditLogRetentionDays: "2555"
+    enableGDPR: "true"
+    enablePCIDSS: "true"
+    enableSOX: "true"
+  initContainer:
+    resources:
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
 
-# Frontend configuration
 frontend:
   replicas: 3
   image:
@@ -41,20 +103,19 @@ frontend:
       cpu: 200m
       memory: 256Mi
 
-# Database configuration
 database:
   replicas: 1
   image:
     repository: mysql
-    tag: 8.0
+    tag: "8.0"
     pullPolicy: IfNotPresent
   containerPort: 3306
   servicePort: 3306
   name: carbonxchangedb
   user: appuser
-  password: staging-password
-  rootPassword: staging-root-password
-  url: mysql://appuser:staging-password@app-database:3306/appdb
+  password: staging-db-password-change-in-vault
+  rootPassword: staging-root-password-change-in-vault
+  url: "mysql://appuser:staging-db-password-change-in-vault@carbonxchange-database:3306/carbonxchangedb"
   storageClass: standard
   storage: 20Gi
   resources:
@@ -65,15 +126,16 @@ database:
       cpu: 1000m
       memory: 1Gi
 
-# Redis configuration
 redis:
   replicas: 2
   image:
     repository: redis
-    tag: 6.2
+    tag: "7.2-alpine"
     pullPolicy: IfNotPresent
   containerPort: 6379
   servicePort: 6379
+  password: staging-redis-password-change-in-vault
+  url: "redis://:staging-redis-password-change-in-vault@carbonxchange-redis:6379"
   storageClass: standard
   storage: 10Gi
   resources:
@@ -84,7 +146,6 @@ redis:
       cpu: 200m
       memory: 512Mi
 
-# Ingress configuration
 ingress:
   host: staging.carbonxchange.example.com
   class: nginx
@@ -92,6 +153,8 @@ ingress:
   certManager:
     issuer: letsencrypt-staging
 
-# General configuration
+backup:
+  schedule: "0 2 * * *"
+
 logLevel: info
-imagePullSecrets: regcred
+imagePullSecret: regcred

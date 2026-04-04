@@ -1,7 +1,13 @@
 appName: carbonxchange
+namespace: carbonxchange
 environment: prod
 
-# Backend configuration
+aws:
+  region: us-west-2
+  kmsKeyId: ""
+  s3Bucket: "carbonxchange-prod-assets"
+  cloudwatchLogGroup: "/carbonxchange/prod"
+
 backend:
   replicas: 5
   image:
@@ -17,11 +23,67 @@ backend:
     requests:
       cpu: 1000m
       memory: 1Gi
-  apiUrl: http://app-backend
-  jwtSecret: prod-jwt-secret
-  apiKey: prod-api-key
+  apiUrl: http://carbonxchange-backend
+  jwtSecret: prod-jwt-secret-use-vault
+  apiKey: prod-api-key-use-vault
+  encryptionKey: prod-encryption-key-use-vault!!
+  apiKeySalt: prod-api-key-salt-use-vault
+  corsOrigins: "https://carbonxchange.example.com"
+  logLevel: warn
+  metrics:
+    port: 9090
+    path: /metrics
+  health:
+    port: 8080
+    livenessPath: /health/live
+    readinessPath: /health/ready
+    startupPath: /health/startup
+    livenessProbe:
+      initialDelaySeconds: 60
+      periodSeconds: 30
+      timeoutSeconds: 10
+      failureThreshold: 3
+      successThreshold: 1
+    readinessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
+    startupProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      timeoutSeconds: 1
+      failureThreshold: 60
+  strategy:
+    maxSurge: "25%"
+    maxUnavailable: "10%"
+  rateLimit:
+    windowMs: "900000"
+    maxRequests: "100"
+  session:
+    timeoutMinutes: "30"
+  security:
+    maxLoginAttempts: "5"
+    lockoutDurationMinutes: "15"
+    passwordMinLength: "12"
+    requireMFA: "true"
+    enableTransactionSigning: "true"
+  compliance:
+    dataRetentionDays: "2555"
+    auditLogRetentionDays: "2555"
+    enableGDPR: "true"
+    enablePCIDSS: "true"
+    enableSOX: "true"
+  initContainer:
+    resources:
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
 
-# Frontend configuration
 frontend:
   replicas: 5
   image:
@@ -41,20 +103,19 @@ frontend:
       cpu: 500m
       memory: 512Mi
 
-# Database configuration
 database:
   replicas: 3
   image:
     repository: mysql
-    tag: 8.0
+    tag: "8.0"
     pullPolicy: IfNotPresent
   containerPort: 3306
   servicePort: 3306
   name: carbonxchangedb
   user: appuser
-  password: prod-password
-  rootPassword: prod-root-password
-  url: mysql://appuser:prod-password@app-database:3306/appdb
+  password: prod-db-password-use-vault
+  rootPassword: prod-root-password-use-vault
+  url: "mysql://appuser:prod-db-password-use-vault@carbonxchange-database:3306/carbonxchangedb"
   storageClass: premium-rwo
   storage: 50Gi
   resources:
@@ -65,15 +126,16 @@ database:
       cpu: 2000m
       memory: 4Gi
 
-# Redis configuration
 redis:
   replicas: 3
   image:
     repository: redis
-    tag: 6.2
+    tag: "7.2-alpine"
     pullPolicy: IfNotPresent
   containerPort: 6379
   servicePort: 6379
+  password: prod-redis-password-use-vault
+  url: "redis://:prod-redis-password-use-vault@carbonxchange-redis:6379"
   storageClass: premium-rwo
   storage: 20Gi
   resources:
@@ -84,7 +146,6 @@ redis:
       cpu: 500m
       memory: 1Gi
 
-# Ingress configuration
 ingress:
   host: carbonxchange.example.com
   class: nginx
@@ -92,6 +153,8 @@ ingress:
   certManager:
     issuer: letsencrypt-prod
 
-# General configuration
+backup:
+  schedule: "0 1 * * *"
+
 logLevel: warn
-imagePullSecrets: regcred
+imagePullSecret: regcred

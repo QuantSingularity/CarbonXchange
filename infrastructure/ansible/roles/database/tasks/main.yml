@@ -26,9 +26,27 @@
 - name: Set root password
   community.mysql.mysql_user:
     name: root
-    password: "{{ database_root_password }}"
+    password: "{{ vault_database_root_password }}"
     host_all: true
     state: present
+    login_unix_socket: /var/lib/mysql/mysql.sock
+  no_log: true
+
+- name: Remove anonymous users
+  community.mysql.mysql_user:
+    name: ""
+    host_all: true
+    state: absent
+    login_user: root
+    login_password: "{{ vault_database_root_password }}"
+  no_log: true
+
+- name: Remove test database
+  community.mysql.mysql_db:
+    name: test
+    state: absent
+    login_user: root
+    login_password: "{{ vault_database_root_password }}"
   no_log: true
 
 - name: Create application database
@@ -36,15 +54,16 @@
     name: "{{ database_name }}"
     state: present
     login_user: root
-    login_password: "{{ database_root_password }}"
+    login_password: "{{ vault_database_root_password }}"
+  no_log: true
 
 - name: Create application database user
   community.mysql.mysql_user:
     name: "{{ database_user }}"
-    password: "{{ database_password }}"
+    password: "{{ vault_database_password }}"
     priv: "{{ database_name }}.*:ALL"
     host: "%"
     state: present
     login_user: root
-    login_password: "{{ database_root_password }}"
+    login_password: "{{ vault_database_root_password }}"
   no_log: true

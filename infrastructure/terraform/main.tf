@@ -1,13 +1,24 @@
 terraform {
-  required_version = ">= 1.0.0"
+  required_version = ">= 1.5.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.0"
+      version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.5"
     }
   }
   backend "s3" {
-    # Will be configured per environment
+    # Configured per environment via -backend-config flags or environment tfvars
+    # Example:
+    #   terraform init \
+    #     -backend-config="bucket=carbonxchange-tfstate-${ENV}" \
+    #     -backend-config="key=${ENV}/terraform.tfstate" \
+    #     -backend-config="region=us-west-2" \
+    #     -backend-config="encrypt=true" \
+    #     -backend-config="dynamodb_table=carbonxchange-tfstate-lock"
   }
 }
 
@@ -28,16 +39,30 @@ module "network" {
   private_subnet_cidrs = var.private_subnet_cidrs
 }
 
+module "security" {
+  source = "./modules/security"
+
+  environment        = var.environment
+  vpc_id             = module.network.vpc_id
+  vpc_cidr           = var.vpc_cidr
+  app_name           = var.app_name
+  private_subnet_ids = module.network.private_subnet_ids
+  db_username        = var.db_username
+  db_password        = var.db_password
+}
+
 module "compute" {
   source = "./modules/compute"
 
   environment        = var.environment
   vpc_id             = module.network.vpc_id
+  public_subnet_ids  = module.network.public_subnet_ids
   private_subnet_ids = module.network.private_subnet_ids
   instance_type      = var.instance_type
   key_name           = var.key_name
   app_name           = var.app_name
   security_group_ids = [module.security.app_security_group_id]
+  alb_security_group_ids = [module.security.alb_security_group_id]
 }
 
 module "database" {
@@ -59,14 +84,11 @@ module "storage" {
   app_name    = var.app_name
 }
 
-module "security" {
-  source = "./modules/security"
+module "monitoring" {
+  source = "./modules/monitoring"
 
   environment        = var.environment
-  vpc_id             = module.network.vpc_id
-  vpc_cidr           = var.vpc_cidr
   app_name           = var.app_name
+  vpc_id             = module.network.vpc_id
   private_subnet_ids = module.network.private_subnet_ids
-  db_username        = var.db_username
-  db_password        = var.db_password
 }

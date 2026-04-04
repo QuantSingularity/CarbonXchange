@@ -2,10 +2,14 @@ apiVersion: v1
 kind: Service
 metadata:
   name: "{{ .Values.appName }}-database"
+  namespace: '{{ .Values.namespace | default "carbonxchange" }}'
   labels:
     app: "{{ .Values.appName }}-database"
+    component: database
+    environment: "{{ .Values.environment }}"
 spec:
   type: ClusterIP
+  clusterIP: None
   ports:
     - port: { { .Values.database.servicePort } }
       targetPort: { { .Values.database.containerPort } }
@@ -13,3 +17,4 @@ spec:
       name: mysql
   selector:
     app: "{{ .Values.appName }}-database"
+    component: database

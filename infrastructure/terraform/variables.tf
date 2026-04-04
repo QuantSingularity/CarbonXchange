@@ -7,11 +7,17 @@ variable "aws_region" {
 variable "environment" {
   description = "Environment name (dev, staging, prod)"
   type        = string
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be one of: dev, staging, prod."
+  }
 }
 
 variable "app_name" {
   description = "Application name"
   type        = string
+  default     = "carbonxchange"
 }
 
 variable "vpc_cidr" {
@@ -59,6 +65,7 @@ variable "db_instance_class" {
 variable "db_name" {
   description = "Database name"
   type        = string
+  default     = "carbonxchangedb"
 }
 
 variable "db_username" {
@@ -78,6 +85,7 @@ variable "default_tags" {
   type        = map(string)
   default = {
     Terraform   = "true"
-    Environment = "dev"
+    Project     = "CarbonXchange"
+    ManagedBy   = "Terraform"
   }
 }

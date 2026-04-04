@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: "{{ .Values.appName }}-backend"
-  namespace: '{{ .Values.namespace | default "default" }}'
+  namespace: '{{ .Values.namespace | default "carbonxchange" }}'
   labels:
     app: "{{ .Values.appName }}-backend"
     component: backend

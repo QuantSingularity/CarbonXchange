@@ -27,6 +27,17 @@
     owner: root
     group: root
     mode: "0644"
+    validate: nginx -t -c /etc/nginx/nginx.conf
+  notify: Restart Nginx
+  tags:
+    - configuration
+
+- name: Ensure nginx.conf includes conf.d
+  ansible.builtin.lineinfile:
+    path: /etc/nginx/nginx.conf
+    regexp: "include /etc/nginx/conf.d"
+    line: "    include /etc/nginx/conf.d/*.conf;"
+    state: present
   notify: Restart Nginx
   tags:
     - configuration
@@ -38,3 +49,17 @@
     enabled: true
   tags:
     - services
+
+- name: Open Nginx ports in SELinux
+  ansible.posix.seport:
+    ports: "{{ item }}"
+    proto: tcp
+    setype: http_port_t
+    state: present
+  loop:
+    - 80
+    - 443
+  when: ansible_os_family == "RedHat"
+  tags:
+    - selinux
+    - security

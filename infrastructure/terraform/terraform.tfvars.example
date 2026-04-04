@@ -1,45 +1,27 @@
-# Terraform Variables Example
-# Copy this file to terraform.tfvars and fill in your actual values
-# DO NOT commit terraform.tfvars to version control
+# CarbonXchange Terraform Variables Example
+# Copy to the relevant environments/ folder and customise.
+# Sensitive values (db_password) should be passed via:
+#   export TF_VAR_db_password="$(aws secretsmanager get-secret-value ...)"
+# or via a .tfvars file that is NOT committed to version control.
 
-aws_region = "us-west-2"
-environment = "dev" # Options: dev, staging, prod
-app_name    = "carbonxchange"
+environment  = "dev"
+app_name     = "carbonxchange"
+aws_region   = "us-west-2"
 
-# Network Configuration
 vpc_cidr             = "10.0.0.0/16"
 availability_zones   = ["us-west-2a", "us-west-2b", "us-west-2c"]
 public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
 private_subnet_cidrs = ["10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24"]
 
-# Compute Configuration
-instance_type = "t3.micro" # Adjust based on environment
-key_name      = "your-ssh-key-name" # Create in AWS Console first
-
-# Database Configuration
-db_instance_class = "db.t3.micro" # Adjust based on environment
+instance_type     = "t3.small"
+db_instance_class = "db.t3.micro"
 db_name           = "carbonxchangedb"
-db_username       = "dbadmin" # Change this
+db_username       = "appuser"
+# db_password intentionally omitted — set via env var TF_VAR_db_password
 
-# SECURITY: DO NOT store actual password here in version control
-# Use one of these methods instead:
-# 1. AWS Secrets Manager: db_password = data.aws_secretsmanager_secret_version.db_password.secret_string
-# 2. Environment variable: export TF_VAR_db_password="your-secure-password"
-# 3. Pass at runtime: terraform apply -var="db_password=your-secure-password"
-db_password = "REPLACE_WITH_SECURE_PASSWORD" # Min 16 chars, mix of upper/lower/numbers/special
-
-# Tags
 default_tags = {
   Terraform   = "true"
-  Environment = "dev" # Match environment variable
-  Project     = "carbonxchange"
-  ManagedBy   = "terraform"
-  CostCenter  = "engineering"
+  Project     = "CarbonXchange"
+  Environment = "dev"
+  ManagedBy   = "Terraform"
 }
-
-# Notes:
-# - For production, ALWAYS use Secrets Manager or Parameter Store
-# - Rotate passwords regularly
-# - Use strong passwords (min 16 chars with complexity)
-# - Enable MFA for AWS root and admin accounts
-# - Review security groups and NACLs before apply

@@ -1,191 +1,50 @@
-# ===============================================================
-# CarbonXchange Infrastructure .gitignore
-# ===============================================================
-
-# =========================
 # Terraform
-# =========================
-
-# Local .terraform directories
-**/.terraform/*
-**/.terraform.lock.hcl
-
-# .tfstate files
+**/.terraform/
 *.tfstate
 *.tfstate.*
-
-# Crash log files
-crash.log
-crash.*.log
-
-# Variable files that may contain secrets
-terraform.tfvars
-*.auto.tfvars
-*.auto.tfvars.json
-
-# Plans
 *.tfplan
-tfplan
-
-# Override files
+.terraform.lock.hcl
+crash.log
 override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
-
-# CLI configuration files
 .terraformrc
 terraform.rc
 
-# =========================
 # Ansible
-# =========================
+*.retry
+ansible/.vault_pass
+ansible/group_vars/all/vault.yml
 
-# Inventory files with real IPs/hostnames
-ansible/inventory/hosts.yml
-ansible/inventory/*.yml
-!ansible/inventory/hosts.example.yml
+# Kubernetes secrets
+*-secrets.yaml.local
+kubeconfig
 
-# Vault files
-ansible/group_vars/*/vault.yml
-ansible/host_vars/*/vault.yml
-!**/*.example.yml
+# Docker
+.env
+docker-compose.override.yml
 
-# Ansible cache
-ansible/.ansible/
-ansible/**.retry
-ansible/**/*.retry
-
-# Ansible facts cache
-/tmp/ansible_facts/
-
-# =========================
-# Kubernetes
-# =========================
-
-# Real secrets (not examples)
-kubernetes/base/app-secrets.yaml
-kubernetes/*/secrets.yaml
-kubernetes/*/*-secrets.yaml
-!kubernetes/**/*.example.yaml
-
-# Kustomize build output
-kubernetes/build/
-
-# =========================
-# General
-# =========================
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# SSH keys
+*.pem
+*.key
+id_rsa
+id_ed25519
 
 # OS
 .DS_Store
 Thumbs.db
 
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
 # Logs
 *.log
 logs/
 
-# Temporary files
+# Temporary
 tmp/
-temp/
 *.tmp
-
-# Backup files
-*.backup
-*.bak
-*~
-
-# Environment files
-.env
-.env.local
-.env.*.local
-
-# SSH Keys
-*.pem
-*.key
-id_rsa*
-!*.pub
-
-# Certificates
-*.crt
-*.cert
-*.ca-bundle
-!ca.example.crt
-
-# =========================
-# CI/CD
-# =========================
-
-# GitHub Actions
-.github/workflows/*.log
-
-# =========================
-# Monitoring/Logging
-# =========================
-
-# Prometheus data
-monitoring/prometheus/data/
-
-# Grafana data
-monitoring/grafana/data/
-
-# Elasticsearch data
-monitoring/elasticsearch/data/
-
-# =========================
-# Backup
-# =========================
-
-# Database dumps
-backup-recovery/database-backup/*.sql
-backup-recovery/database-backup/*.dump
-backup-recovery/**/*.gz
-backup-recovery/**/*.tar
-
-# Velero backups
-backup-recovery/kubernetes-backup/backups/
-
-# =========================
-# Security
-# =========================
-
-# AWS credentials
-.aws/
-credentials
-config
-
-# Vault tokens
-.vault-token
-
-# Private keys and certificates
-security/**/private.key
-security/**/*.pem
-security/**/*.p12
-security/**/*.pfx
-
-# =========================
-# Validation/Testing
-# =========================
-
-# Test output
-validation_logs/*.txt
-test-results/
-coverage/
-
-# Compliance reports
-compliance-reports/
-audit-reports/
-
-# =========================
-# Scripts
-# =========================
-
-# Script outputs
-*.output
-run_*.log

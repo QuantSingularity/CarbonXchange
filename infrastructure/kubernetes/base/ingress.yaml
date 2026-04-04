@@ -2,11 +2,24 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: "{{ .Values.appName }}-ingress"
+  namespace: '{{ .Values.namespace | default "carbonxchange" }}'
+  labels:
+    app: "{{ .Values.appName }}"
+    component: ingress
+    environment: "{{ .Values.environment }}"
   annotations:
-    kubernetes.io/ingress.class: "{{ .Values.ingress.class }}"
+    nginx.ingress.kubernetes.io/ingress.class: "{{ .Values.ingress.class }}"
     nginx.ingress.kubernetes.io/ssl-redirect: "{{ .Values.ingress.sslRedirect }}"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
     cert-manager.io/cluster-issuer: "{{ .Values.ingress.certManager.issuer }}"
 spec:
+  ingressClassName: "{{ .Values.ingress.class }}"
   tls:
     - hosts:
         - "{{ .Values.ingress.host }}"

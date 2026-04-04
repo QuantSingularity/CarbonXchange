@@ -2,24 +2,57 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: "{{ .Values.appName }}-redis"
+  namespace: '{{ .Values.namespace | default "carbonxchange" }}'
   labels:
     app: "{{ .Values.appName }}-redis"
+    component: redis
+    tier: cache
+    environment: "{{ .Values.environment }}"
 spec:
   replicas: { { .Values.redis.replicas } }
   selector:
     matchLabels:
       app: "{{ .Values.appName }}-redis"
+      component: redis
   template:
     metadata:
       labels:
         app: "{{ .Values.appName }}-redis"
+        component: redis
+        tier: cache
+        environment: "{{ .Values.environment }}"
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: "{{ .Values.appName }}-redis"
           image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
           imagePullPolicy: "{{ .Values.redis.image.pullPolicy }}"
+          command:
+            - redis-server
+            - "--appendonly"
+            - "yes"
+            - "--requirepass"
+            - "$(REDIS_PASSWORD)"
           ports:
-            - containerPort: { { .Values.redis.containerPort } }
+            - name: redis
+              containerPort: { { .Values.redis.containerPort } }
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            capabilities:
+              drop:
+                - ALL
           resources:
             limits:
               cpu: "{{ .Values.redis.resources.limits.cpu }}"
@@ -27,20 +60,41 @@ spec:
             requests:
               cpu: "{{ .Values.redis.resources.requests.cpu }}"
               memory: "{{ .Values.redis.resources.requests.memory }}"
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.appName }}-secrets"
+                  key: redis-password
           livenessProbe:
             exec:
-              command: ["redis-cli", "ping"]
+              command:
+                - sh
+                - -c
+                - "redis-cli -a ${REDIS_PASSWORD} ping"
             initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           readinessProbe:
             exec:
-              command: ["redis-cli", "ping"]
+              command:
+                - sh
+                - -c
+                - "redis-cli -a ${REDIS_PASSWORD} ping"
             initialDelaySeconds: 5
             periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
           volumeMounts:
             - name: "{{ .Values.appName }}-redis-data"
               mountPath: /data
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: "{{ .Values.appName }}-redis-data"
           persistentVolumeClaim:
             claimName: "{{ .Values.appName }}-redis-pvc"
+        - name: tmp
+          emptyDir: {}
+      terminationGracePeriodSeconds: 30

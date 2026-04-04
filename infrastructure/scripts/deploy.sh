@@ -34,7 +34,7 @@ log_warning() {
 }
 
 log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
 # Validation functions
@@ -48,8 +48,7 @@ validate_environment() {
 validate_prerequisites() {
     log_info "Validating prerequisites..."
 
-    # Check required tools
-    local tools=("terraform" "kubectl" "ansible" "aws")
+    local tools=("terraform" "kubectl" "ansible" "aws" "jq")
     for tool in "${tools[@]}"; do
         if ! command -v "$tool" &> /dev/null; then
             log_error "$tool is not installed or not in PATH"
@@ -63,10 +62,12 @@ validate_prerequisites() {
         exit 1
     fi
 
-    # Check Terraform version
-    local tf_version=$(terraform version -json | jq -r '.terraform_version')
-    if [[ $(echo "$tf_version 1.5.0" | tr " " "\n" | sort -V | head -n1) != "1.5.0" ]]; then
-        log_error "Terraform version must be 1.5.0 or higher. Current: $tf_version"
+    # Check Terraform version (>= 1.5.0)
+    local tf_version
+    tf_version=$(terraform version -json | jq -r '.terraform_version')
+    local min_version="1.5.0"
+    if [[ "$(printf '%s\n' "$min_version" "$tf_version" | sort -V | head -n1)" != "$min_version" ]]; then
+        log_error "Terraform version must be >= $min_version. Current: $tf_version"
         exit 1
     fi
 
@@ -78,15 +79,13 @@ validate_terraform_config() {
 
     cd "$TERRAFORM_DIR"
 
-    # Check if tfvars file exists
     local tfvars_file="environments/$ENVIRONMENT/terraform.tfvars"
     if [[ ! -f "$tfvars_file" ]]; then
         log_error "Terraform variables file not found: $tfvars_file"
         exit 1
     fi
 
-    # Validate Terraform configuration
-    terraform init -backend=false &> /dev/null
+    terraform init -backend=false -input=false &> /dev/null
     if ! terraform validate; then
         log_error "Terraform configuration validation failed"
         exit 1
@@ -101,29 +100,28 @@ deploy_terraform() {
 
     cd "$TERRAFORM_DIR"
 
-    # Initialize Terraform
-    terraform init
+    terraform init -input=false
 
-    # Plan deployment
     log_info "Creating Terraform plan..."
-    terraform plan -var-file="environments/$ENVIRONMENT/terraform.tfvars" -out="$ENVIRONMENT.tfplan"
+    terraform plan \
+        -var-file="environments/$ENVIRONMENT/terraform.tfvars" \
+        -out="$ENVIRONMENT.tfplan" \
+        -input=false
 
-    # Ask for confirmation in production
     if [[ "$ENVIRONMENT" == "prod" ]]; then
         echo
         log_warning "You are about to deploy to PRODUCTION environment!"
-        read -p "Are you sure you want to continue? (yes/no): " confirm
+        read -r -p "Are you sure you want to continue? (yes/no): " confirm
         if [[ "$confirm" != "yes" ]]; then
             log_info "Deployment cancelled"
+            rm -f "$ENVIRONMENT.tfplan"
             exit 0
         fi
     fi
 
-    # Apply configuration
     log_info "Applying Terraform configuration..."
-    terraform apply "$ENVIRONMENT.tfplan"
+    terraform apply -input=false "$ENVIRONMENT.tfplan"
 
-    # Clean up plan file
     rm -f "$ENVIRONMENT.tfplan"
 
     log_success "Terraform infrastructure deployed"
@@ -134,29 +132,33 @@ deploy_kubernetes() {
 
     cd "$KUBERNETES_DIR"
 
-    # Create namespace if it doesn't exist
-    kubectl create namespace "carbonxchange-$ENVIRONMENT" --dry-run=client -o yaml | kubectl apply -f -
+    local namespace="carbonxchange"
 
-    # Apply security configurations first
-    log_info "Applying security policies..."
-    kubectl apply -f security/ -n "carbonxchange-$ENVIRONMENT"
+    # Apply pod security standards (creates the namespace with labels)
+    log_info "Applying namespace and pod security standards..."
+    kubectl apply -f security/pod-security-standards.yaml
 
-    # Apply base configurations
+    # Apply RBAC configurations
+    log_info "Applying RBAC policies..."
+    kubectl apply -f security/rbac.yaml
+
+    # Apply network policies
+    log_info "Applying network policies..."
+    kubectl apply -f security/network-policies.yaml
+
+    # Apply base configurations (namespace comes from each manifest's metadata)
     log_info "Applying base configurations..."
-    kubectl apply -f base/ -n "carbonxchange-$ENVIRONMENT"
-
-    # Apply monitoring configurations
-    log_info "Applying monitoring configurations..."
-    kubectl apply -f monitoring/ -n "carbonxchange-$ENVIRONMENT"
+    kubectl apply -f base/
 
     # Apply compliance configurations
     log_info "Applying compliance configurations..."
-    kubectl apply -f compliance/ -n "carbonxchange-$ENVIRONMENT"
+    kubectl apply -f compliance/
 
     # Apply environment-specific configurations
     if [[ -d "environments/$ENVIRONMENT" ]]; then
         log_info "Applying environment-specific configurations..."
-        kubectl apply -f "environments/$ENVIRONMENT/" -n "carbonxchange-$ENVIRONMENT"
+        # Values files are consumed by Helm/templating, not applied directly
+        log_info "Note: environment values files are used by Helm chart rendering"
     fi
 
     log_success "Kubernetes configurations deployed"
@@ -167,99 +169,93 @@ deploy_ansible() {
 
     cd "$ANSIBLE_DIR"
 
-    # Check if inventory file exists
     local inventory_file="inventory/hosts.yml"
     if [[ ! -f "$inventory_file" ]]; then
         log_warning "Ansible inventory file not found: $inventory_file. Skipping Ansible deployment."
         return 0
     fi
 
-    # Run main playbook
-    ansible-playbook -i "$inventory_file" playbooks/main.yml --extra-vars "environment=$ENVIRONMENT"
+    # Install required collections
+    if [[ -f "requirements.yml" ]]; then
+        log_info "Installing Ansible collections..."
+        ansible-galaxy collection install -r requirements.yml
+    fi
+
+    ansible-playbook \
+        -i "$inventory_file" \
+        playbooks/main.yml \
+        --extra-vars "environment=$ENVIRONMENT" \
+        --diff
 
     log_success "Ansible playbooks executed"
 }
 
-# Verification functions
 verify_deployment() {
     log_info "Verifying deployment for $ENVIRONMENT..."
 
-    # Verify Terraform resources
-    cd "$TERRAFORM_DIR"
-    log_info "Verifying Terraform resources..."
-    terraform show -json > "/tmp/terraform-state-$ENVIRONMENT.json"
+    local namespace="carbonxchange"
 
     # Verify Kubernetes resources
     log_info "Verifying Kubernetes resources..."
-    kubectl get all -n "carbonxchange-$ENVIRONMENT"
+    kubectl get all -n "$namespace" 2>/dev/null || log_warning "Namespace $namespace not yet available"
 
-    # Check pod status
-    local failed_pods=$(kubectl get pods -n "carbonxchange-$ENVIRONMENT" --field-selector=status.phase!=Running --no-headers 2>/dev/null | wc -l)
+    # Check pod status — filter out Completed pods (e.g. migration init containers)
+    local failed_pods
+    failed_pods=$(kubectl get pods -n "$namespace" \
+        --field-selector="status.phase!=Running,status.phase!=Succeeded" \
+        --no-headers 2>/dev/null | wc -l)
     if [[ "$failed_pods" -gt 0 ]]; then
-        log_warning "$failed_pods pods are not in Running state"
-        kubectl get pods -n "carbonxchange-$ENVIRONMENT" --field-selector=status.phase!=Running
+        log_warning "$failed_pods pods are not in Running/Succeeded state:"
+        kubectl get pods -n "$namespace" \
+            --field-selector="status.phase!=Running,status.phase!=Succeeded" 2>/dev/null || true
     fi
 
-    # Verify security policies
-    log_info "Verifying security policies..."
-    kubectl get psp,networkpolicy -n "carbonxchange-$ENVIRONMENT"
+    # Verify network policies
+    log_info "Verifying network policies..."
+    kubectl get networkpolicy -n "$namespace" 2>/dev/null || true
 
     log_success "Deployment verification completed"
 }
 
-# Cleanup function
 cleanup() {
-    log_info "Cleaning up temporary files..."
-    rm -f "/tmp/terraform-state-$ENVIRONMENT.json"
-    cd "$TERRAFORM_DIR" && rm -f "$ENVIRONMENT.tfplan"
+    cd "$TERRAFORM_DIR" 2>/dev/null && rm -f "$ENVIRONMENT.tfplan" || true
 }
 
-# Main deployment function
 main() {
     log_info "Starting CarbonXchange infrastructure deployment"
     log_info "Environment: $ENVIRONMENT"
-    log_info "Timestamp: $(date)"
+    log_info "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
-    # Validation phase
     validate_environment
     validate_prerequisites
     validate_terraform_config
 
-    # Deployment phase
     deploy_terraform
     deploy_kubernetes
     deploy_ansible
 
-    # Verification phase
     verify_deployment
-
-    # Cleanup
-    cleanup
 
     log_success "CarbonXchange infrastructure deployment completed successfully!"
     log_info "Environment: $ENVIRONMENT"
-    log_info "Deployment completed at: $(date)"
+    log_info "Completed at: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
-    # Display important information
     echo
-    log_info "Important URLs and Information:"
-    echo "  - AWS Console: https://console.aws.amazon.com/"
+    log_info "Important URLs:"
+    echo "  - AWS Console:          https://console.aws.amazon.com/"
     echo "  - Kubernetes Dashboard: kubectl proxy"
-    echo "  - Monitoring: Check CloudWatch dashboards"
-    echo "  - Logs: CloudWatch Logs groups"
+    echo "  - Logs:                 CloudWatch Log Groups /carbonxchange/$ENVIRONMENT"
     echo
     log_info "Next steps:"
-    echo "  1. Verify application deployment"
-    echo "  2. Run security scans"
-    echo "  3. Validate compliance requirements"
-    echo "  4. Update documentation"
+    echo "  1. Verify all pods are Running: kubectl get pods -n carbonxchange"
+    echo "  2. Check application health endpoints"
+    echo "  3. Run security scans"
+    echo "  4. Validate compliance requirements"
 }
 
-# Error handling
 trap cleanup EXIT
-trap 'log_error "Deployment failed at line $LINENO"' ERR
+trap 'log_error "Deployment failed at line $LINENO. Exit code: $?"' ERR
 
-# Script execution
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main "$@"
 fi

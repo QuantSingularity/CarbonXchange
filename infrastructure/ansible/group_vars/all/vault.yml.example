@@ -1,32 +1,13 @@
 ---
-# Encrypted Variables Example
-# Create the real file with: ansible-vault create group_vars/all/vault.yml
-# Edit with: ansible-vault edit group_vars/all/vault.yml --vault-password-file .vault_pass
-# 
-# Then encrypt these values:
-# ansible-vault encrypt_string 'actual_password' --name 'vault_database_password'
+# group_vars/all/vault.yml.example
+# Rename to vault.yml and encrypt with: ansible-vault encrypt vault.yml
+# All variables below MUST be set in the encrypted vault.yml
 
-# Database credentials (encrypt these values)
-vault_database_password: "REPLACE_WITH_ACTUAL_PASSWORD"
-vault_database_root_password: "REPLACE_WITH_ACTUAL_ROOT_PASSWORD"
+# Database credentials
+vault_database_root_password: "CHANGE_ME_root_password"
+vault_database_password: "CHANGE_ME_app_password"
 
-# Application secrets (encrypt these values)
-vault_app_secret_key: "REPLACE_WITH_ACTUAL_SECRET_KEY"
-vault_jwt_secret: "REPLACE_WITH_ACTUAL_JWT_SECRET"
-
-# API keys (encrypt these values)
-vault_api_key: "REPLACE_WITH_ACTUAL_API_KEY"
-
-# AWS credentials if needed (encrypt these values)
-vault_aws_access_key_id: "REPLACE_WITH_AWS_ACCESS_KEY"
-vault_aws_secret_access_key: "REPLACE_WITH_AWS_SECRET_KEY"
-
-# Example of encrypted string format (this is what you'll see after encryption):
-# vault_database_password: !vault |
-#          $ANSIBLE_VAULT;1.1;AES256
-#          66386439653966363633613966643965343739313731616361373137303963326666383430623937
-#          ...
-
-# Usage in playbooks:
-# - Reference these as: "{{ vault_database_password }}"
-# - Run playbooks with: ansible-playbook playbook.yml --vault-password-file .vault_pass
+# Application secrets
+vault_jwt_secret: "CHANGE_ME_jwt_secret_min_32_chars_long"
+vault_encryption_key: "CHANGE_ME_32_char_encryption_key!!"
+vault_api_key_salt: "CHANGE_ME_api_key_salt"

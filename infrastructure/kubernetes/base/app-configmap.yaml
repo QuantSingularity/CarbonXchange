@@ -2,6 +2,11 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: "{{ .Values.appName }}-config"
+  namespace: '{{ .Values.namespace | default "carbonxchange" }}'
+  labels:
+    app: "{{ .Values.appName }}"
+    component: config
+    environment: "{{ .Values.environment }}"
 data:
   API_URL: "{{ .Values.backend.apiUrl }}"
   REDIS_HOST: "{{ .Values.appName }}-redis"
@@ -11,3 +16,7 @@ data:
   DATABASE_NAME: "{{ .Values.database.name }}"
   DATABASE_USER: "{{ .Values.database.user }}"
   LOG_LEVEL: "{{ .Values.logLevel }}"
+  kms-key-id: '{{ .Values.aws.kmsKeyId | default "" }}'
+  s3-bucket: '{{ .Values.aws.s3Bucket | default "" }}'
+  cloudwatch-log-group: '{{ .Values.aws.cloudwatchLogGroup | default "/carbonxchange/app" }}'
+  cors-origins: '{{ .Values.backend.corsOrigins | default "https://carbonxchange.example.com" }}'

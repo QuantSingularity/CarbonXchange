@@ -1,16 +1,38 @@
+# MariaDB configuration - managed by Ansible
+# /etc/my.cnf.d/server.cnf
+
 [mysqld]
-datadir=/var/lib/mysql
-socket=/var/lib/mysql/mysql.sock
-symbolic-links=0
+# Networking
+bind-address            = 0.0.0.0
+max_connections         = {{ database_max_connections }}
+max_allowed_packet      = {{ database_max_allowed_packet }}
 
-max_connections = {{ db_max_connections | default(100) }}
-max_allowed_packet = {{ db_max_allowed_packet | default('64M') }}
-innodb_buffer_pool_size = {{ db_innodb_buffer_pool_size | default('256M') }}
-innodb_log_file_size = {{ db_innodb_log_file_size | default('64M') }}
+# Character set
+character-set-server    = utf8mb4
+collation-server        = utf8mb4_unicode_ci
 
-character-set-server = utf8mb4
-collation-server = utf8mb4_unicode_ci
+# InnoDB
+innodb_buffer_pool_size = {{ database_innodb_buffer_pool_size }}
+innodb_log_file_size    = {{ database_innodb_log_file_size }}
+innodb_flush_log_at_trx_commit = 1
+innodb_file_per_table   = ON
 
-[mysqld_safe]
-log-error=/var/log/mariadb/mariadb.log
-pid-file=/var/run/mariadb/mariadb.pid
+# Logging (required for financial compliance)
+general_log             = ON
+general_log_file        = /var/log/mysql/general.log
+slow_query_log          = ON
+slow_query_log_file     = /var/log/mysql/slow.log
+long_query_time         = 2
+log_error               = /var/log/mysql/error.log
+log_bin                 = /var/log/mysql/mysql-bin
+expire_logs_days        = 30
+binlog_format           = ROW
+
+# Security hardening
+local_infile            = OFF
+symbolic-links          = 0
+skip_name_resolve       = ON
+sql_mode                = STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+
+[client]
+default-character-set   = utf8mb4

@@ -1,28 +1,11 @@
-# Ansible Vault Password Example
-# 
-# To use Ansible Vault for secrets:
-# 
-# 1. Create a vault password file:
-#    echo "your-secure-vault-password" > .vault_pass
-#    chmod 600 .vault_pass
-# 
-# 2. Add .vault_pass to .gitignore (already done)
-# 
-# 3. Encrypt sensitive variables:
-#    ansible-vault encrypt_string 'db_password_here' --name 'db_password'
-# 
-# 4. Create encrypted vars files:
-#    ansible-vault create group_vars/all/vault.yml
-# 
-# 5. Run playbooks with vault:
-#    ansible-playbook -i inventory/hosts.yml playbooks/main.yml --vault-password-file .vault_pass
-# 
-# 6. Edit encrypted files:
-#    ansible-vault edit group_vars/all/vault.yml --vault-password-file .vault_pass
-# 
-# Best Practices:
-# - Use different vault passwords per environment
-# - Rotate vault passwords regularly
-# - Store vault passwords in a secure password manager
-# - Never commit .vault_pass to version control
-# - Use ansible-vault for all sensitive data (passwords, keys, tokens)
+# .vault_pass.example
+# Create .vault_pass with your vault password and set permissions:
+#   chmod 600 .vault_pass
+# Then configure ansible.cfg or pass --vault-password-file=.vault_pass
+#
+# For CI/CD, use:
+#   export ANSIBLE_VAULT_PASSWORD_FILE=/path/to/.vault_pass
+# or
+#   ansible-playbook ... --vault-password-file=.vault_pass
+#
+# NEVER commit .vault_pass to version control — it is in .gitignore

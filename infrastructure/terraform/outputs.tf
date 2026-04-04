@@ -13,6 +13,11 @@ output "private_subnet_ids" {
   value       = module.network.private_subnet_ids
 }
 
+output "alb_security_group_id" {
+  description = "ID of the ALB security group"
+  value       = module.security.alb_security_group_id
+}
+
 output "app_security_group_id" {
   description = "ID of the application security group"
   value       = module.security.app_security_group_id
@@ -24,18 +29,19 @@ output "db_security_group_id" {
 }
 
 output "app_instance_ids" {
-  description = "IDs of the application instances"
+  description = "ID of the Auto Scaling Group"
   value       = module.compute.instance_ids
 }
 
-output "app_instance_public_ips" {
-  description = "Public IPs of the application instances"
-  value       = module.compute.instance_public_ips
+output "load_balancer_dns" {
+  description = "DNS name of the load balancer"
+  value       = module.compute.load_balancer_dns
 }
 
 output "db_endpoint" {
   description = "Endpoint of the database"
   value       = module.database.db_endpoint
+  sensitive   = true
 }
 
 output "s3_bucket_name" {
