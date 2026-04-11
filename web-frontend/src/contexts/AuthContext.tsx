@@ -2,6 +2,7 @@ import type React from "react";
 import {
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -46,17 +47,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Check if user is already logged in
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      loadUser();
-    } else {
-      setLoading(false);
-    }
-  }, [loadUser]);
-
-  const loadUser = async () => {
+  const loadUser = useCallback(async () => {
     try {
       const response = await getCurrentUser();
       setUser(response.data || response);
@@ -66,7 +57,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (token) {
+      loadUser();
+    } else {
+      setLoading(false);
+    }
+  }, [loadUser]);
 
   const login = async (email: string, password: string) => {
     try {

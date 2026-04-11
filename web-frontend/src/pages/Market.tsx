@@ -1,6 +1,6 @@
 import { Loader2, Search, TrendingUp } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -33,11 +33,7 @@ const Market: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadCredits();
-  }, [loadCredits]);
-
-  const loadCredits = async () => {
+  const loadCredits = useCallback(async () => {
     try {
       const response = await getCarbonCredits();
       setCredits(response.data || []);
@@ -46,7 +42,11 @@ const Market: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadCredits();
+  }, [loadCredits]);
 
   const filteredCredits = credits.filter(
     (credit) =>
@@ -89,16 +89,21 @@ const Market: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredCredits.map((credit) => (
-          <Card key={credit.id} className="hover:shadow-lg transition-shadow">
+          <Card
+            key={credit.id}
+            className="hover:shadow-lg transition-all duration-200 group"
+          >
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <CardTitle className="text-lg">{credit.name}</CardTitle>
+                  <CardTitle className="text-lg group-hover:text-primary transition-colors">
+                    {credit.name}
+                  </CardTitle>
                   <CardDescription className="mt-1">
                     {credit.location}
                   </CardDescription>
                 </div>
-                <Badge>{credit.type}</Badge>
+                <Badge variant="secondary">{credit.type}</Badge>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -106,24 +111,28 @@ const Market: React.FC = () => {
                 {credit.description}
               </p>
 
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Price</p>
-                  <p className="font-semibold text-lg">${credit.price}</p>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="bg-muted/40 rounded-md p-2">
+                  <p className="text-muted-foreground text-xs">Price</p>
+                  <p className="font-semibold text-base text-primary">
+                    ${credit.price.toFixed(2)}
+                  </p>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Available</p>
+                <div className="bg-muted/40 rounded-md p-2">
+                  <p className="text-muted-foreground text-xs">Available</p>
                   <p className="font-semibold">
                     {credit.available.toLocaleString()}
                   </p>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Vintage</p>
+                <div className="bg-muted/40 rounded-md p-2">
+                  <p className="text-muted-foreground text-xs">Vintage</p>
                   <p className="font-semibold">{credit.vintage}</p>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Standard</p>
-                  <p className="font-semibold">{credit.verificationStandard}</p>
+                <div className="bg-muted/40 rounded-md p-2">
+                  <p className="text-muted-foreground text-xs">Standard</p>
+                  <p className="font-semibold text-xs">
+                    {credit.verificationStandard}
+                  </p>
                 </div>
               </div>
 

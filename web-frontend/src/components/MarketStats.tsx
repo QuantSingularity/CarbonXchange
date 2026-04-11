@@ -1,6 +1,6 @@
 import { ArrowDownIcon, ArrowUpIcon } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   getMarketStats,
   getMockMarketStats,
@@ -25,44 +25,7 @@ const MarketStats: React.FC<MarketStatsProps> = ({ className }) => {
   const [stats, setStats] = useState<MarketStatsData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    // Initial data fetch
-    fetchMarketStats();
-
-    // Set up real-time updates
-    const unsubscribe = subscribeToMarketData((data) => {
-      if (data?.price) {
-        setStats((prevStats) => {
-          if (!prevStats) return null;
-
-          // Calculate new average based on incoming data
-          const newAvgPrice = prevStats.averagePrice * 0.95 + data.price * 0.05;
-
-          return {
-            ...prevStats,
-            averagePrice: newAvgPrice,
-            priceChange24h:
-              data.change !== undefined
-                ? data.change
-                : prevStats.priceChange24h,
-            lastUpdated: new Date().toISOString(),
-          };
-        });
-      }
-    });
-
-    // Set up interval for periodic full refreshes
-    const intervalId = setInterval(() => {
-      fetchMarketStats();
-    }, 60000); // Full refresh every minute
-
-    return () => {
-      unsubscribe();
-      clearInterval(intervalId);
-    };
-  }, [fetchMarketStats]);
-
-  const fetchMarketStats = async () => {
+  const fetchMarketStats = useCallback(async () => {
     setLoading(true);
     try {
       let response;
@@ -81,7 +44,40 @@ const MarketStats: React.FC<MarketStatsProps> = ({ className }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchMarketStats();
+
+    const unsubscribe = subscribeToMarketData((data) => {
+      if (data?.price) {
+        setStats((prevStats) => {
+          if (!prevStats) return null;
+
+          const newAvgPrice = prevStats.averagePrice * 0.95 + data.price * 0.05;
+
+          return {
+            ...prevStats,
+            averagePrice: newAvgPrice,
+            priceChange24h:
+              data.change !== undefined
+                ? data.change
+                : prevStats.priceChange24h,
+            lastUpdated: new Date().toISOString(),
+          };
+        });
+      }
+    });
+
+    const intervalId = setInterval(() => {
+      fetchMarketStats();
+    }, 60000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(intervalId);
+    };
+  }, [fetchMarketStats]);
 
   return (
     <>
@@ -114,11 +110,12 @@ const MarketStats: React.FC<MarketStatsProps> = ({ className }) => {
           ) : (
             <div className="flex items-center">
               <span
-                className={`text-2xl font-bold ${stats?.priceChange24h && stats.priceChange24h >= 0 ? "text-green-500" : "text-red-500"}`}
+                className={`text-2xl font-bold ${stats?.priceChange24h !== undefined && stats.priceChange24h >= 0 ? "text-green-500" : "text-red-500"}`}
               >
                 {stats?.priceChange24h.toFixed(2)}%
               </span>
-              {stats?.priceChange24h && stats.priceChange24h >= 0 ? (
+              {stats?.priceChange24h !== undefined &&
+              stats.priceChange24h >= 0 ? (
                 <ArrowUpIcon className="ml-2 h-4 w-4 text-green-500" />
               ) : (
                 <ArrowDownIcon className="ml-2 h-4 w-4 text-red-500" />

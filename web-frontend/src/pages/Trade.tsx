@@ -1,6 +1,6 @@
 import { ArrowLeftRight, Loader2 } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
@@ -35,21 +35,12 @@ const Trade: React.FC = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
-    }
-    loadCredit();
-  }, [isAuthenticated, loadCredit, navigate]);
-
-  const loadCredit = async () => {
+  const loadCredit = useCallback(async () => {
     try {
       if (creditId) {
         const response = await getCarbonCreditById(creditId);
         setCredit(response.data || response);
       } else {
-        // Load first credit as default
         const response = await getCarbonCredits();
         const credits = response.data || [];
         if (credits.length > 0) {
@@ -62,7 +53,15 @@ const Trade: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [creditId]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
+    loadCredit();
+  }, [isAuthenticated, loadCredit, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

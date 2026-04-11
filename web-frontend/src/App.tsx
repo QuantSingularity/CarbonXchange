@@ -9,9 +9,9 @@ import Layout from "./components/layout/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { ThemeProvider } from "./components/theme-provider";
 import { AuthProvider } from "./contexts/AuthContext";
-// Pages
 import Login from "./pages/Login";
 import Market from "./pages/Market";
+import NotFound from "./pages/NotFound";
 import Portfolio from "./pages/Portfolio";
 import Register from "./pages/Register";
 import Trade from "./pages/Trade";
@@ -63,7 +63,7 @@ function App() {
               />
 
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>
         </Router>

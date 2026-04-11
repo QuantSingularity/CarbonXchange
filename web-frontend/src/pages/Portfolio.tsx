@@ -6,7 +6,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "../components/ui/badge";
 import {
   Card,
@@ -50,11 +50,7 @@ const Portfolio: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [portfolioResponse, ordersResponse] = await Promise.all([
         getPortfolio(),
@@ -68,7 +64,11 @@ const Portfolio: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   if (loading) {
     return (

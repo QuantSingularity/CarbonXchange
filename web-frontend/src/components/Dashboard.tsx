@@ -14,10 +14,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 const Dashboard: React.FC = () => {
   return (
     <div className="container mx-auto p-4">
-      <div className="flex flex-col space-y-4">
-        <h1 className="text-3xl font-bold text-primary">
-          CarbonXchange Dashboard
-        </h1>
+      <div className="flex flex-col space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-primary">
+            CarbonXchange Dashboard
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Real-time carbon credit market overview
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <MarketStats />
