@@ -63,6 +63,7 @@ factory-boy==3.3.0
 faker==20.1.0
 
 # Utilities
+setuptools==70.0.0
 click==8.2.1
 blinker==1.9.0
 itsdangerous==2.2.0
