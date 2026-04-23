@@ -147,16 +147,24 @@ class ComplianceRecord(db.Model):
         """Check if remediation is overdue"""
         if not self.remediation_deadline:
             return False
-        return datetime.now(timezone.utc) > self.remediation_deadline and (
-            not self.remediation_completed_date
+        dl = (
+            self.remediation_deadline.replace(tzinfo=timezone.utc)
+            if self.remediation_deadline.tzinfo is None
+            else self.remediation_deadline
         )
+        return datetime.now(timezone.utc) > dl and (not self.remediation_completed_date)
 
     @hybrid_property
     def days_until_due(self) -> Any:
         """Get days until due date"""
         if not self.due_date:
             return None
-        delta = self.due_date - datetime.now(timezone.utc)
+        due = (
+            self.due_date.replace(tzinfo=timezone.utc)
+            if self.due_date.tzinfo is None
+            else self.due_date
+        )
+        delta = due - datetime.now(timezone.utc)
         return delta.days if delta.days > 0 else 0
 
     def add_evidence_document(self, document_path: Any, description: Any = None) -> Any:
@@ -321,7 +329,12 @@ class RegulatoryReport(db.Model):
     @hybrid_property
     def is_overdue(self) -> Any:
         """Check if report is overdue"""
-        return datetime.now(timezone.utc) > self.due_date and self.status not in [
+        due = (
+            self.due_date.replace(tzinfo=timezone.utc)
+            if self.due_date.tzinfo is None
+            else self.due_date
+        )
+        return datetime.now(timezone.utc) > due and self.status not in [
             ReportStatus.SUBMITTED,
             ReportStatus.ACKNOWLEDGED,
         ]
@@ -329,7 +342,12 @@ class RegulatoryReport(db.Model):
     @hybrid_property
     def days_until_due(self) -> Any:
         """Get days until due date"""
-        delta = self.due_date - datetime.now(timezone.utc)
+        due = (
+            self.due_date.replace(tzinfo=timezone.utc)
+            if self.due_date.tzinfo is None
+            else self.due_date
+        )
+        delta = due - datetime.now(timezone.utc)
         return delta.days if delta.days > 0 else 0
 
     @hybrid_property

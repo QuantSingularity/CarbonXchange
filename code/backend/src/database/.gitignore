@@ -1,0 +1,9 @@
+# Ignore all SQLite database files - these are generated at runtime
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+# Keep this file
+!.gitkeep
+!.gitignore

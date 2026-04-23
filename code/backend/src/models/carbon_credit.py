@@ -271,7 +271,7 @@ class CarbonProject(db.Model):
             "project_type": self.project_type.value,
             "status": self.status.value,
             "project_id": self.project_id,
-            "standard": self.standard.value,
+            "standard": self.standard.value if self.standard else None,
             "country": self.country,
             "region": self.region,
             "methodology": self.methodology,

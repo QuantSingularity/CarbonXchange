@@ -94,12 +94,22 @@ class MarketData(db.Model):
     def is_recent(self) -> Any:
         """Check if data is recent (within last hour)"""
         one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
-        return self.timestamp > one_hour_ago
+        ts = (
+            self.timestamp.replace(tzinfo=timezone.utc)
+            if self.timestamp.tzinfo is None
+            else self.timestamp
+        )
+        return ts > one_hour_ago
 
     @hybrid_property
     def age_minutes(self) -> Any:
         """Get age of data in minutes"""
-        delta = datetime.now(timezone.utc) - self.timestamp
+        ts = (
+            self.timestamp.replace(tzinfo=timezone.utc)
+            if self.timestamp.tzinfo is None
+            else self.timestamp
+        )
+        delta = datetime.now(timezone.utc) - ts
         return delta.total_seconds() / 60
 
     def to_dict(self) -> Any:

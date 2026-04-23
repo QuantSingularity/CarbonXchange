@@ -9,6 +9,11 @@
 .DS_Store
 Thumbs.db
 
+# SQLite development databases - never commit
+*.db
+dev.db
+code/backend/src/database/dev.db
+
 # Environment variables
 .env
 .env.*

@@ -32,15 +32,25 @@ from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVR
 
 try:
+    pass
+
     STATSMODELS_AVAILABLE = True
 except ImportError:
     STATSMODELS_AVAILABLE = False
-    logging.warning("Statsmodels not available, ARIMA models will be disabled")
+    logging.warning(
+        "statsmodels not installed - ARIMA forecasting disabled. Install with: pip install statsmodels"
+    )
+
 try:
+    import tensorflow as tf
+
     TENSORFLOW_AVAILABLE = True
+    logging.info("TensorFlow %s detected - LSTM models enabled", tf.__version__)
 except ImportError:
     TENSORFLOW_AVAILABLE = False
-    logging.warning("TensorFlow not available, LSTM models will be disabled")
+    logging.warning(
+        "TensorFlow not installed - LSTM models disabled. Install with: pip install tensorflow"
+    )
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
