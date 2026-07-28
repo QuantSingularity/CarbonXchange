@@ -1,0 +1,363 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Values.appName }}-backend"
+  namespace: '{{ .Values.namespace | default "carbonxchange" }}'
+  labels:
+    app: "{{ .Values.appName }}-backend"
+    component: backend
+    tier: application
+    version: "{{ .Values.backend.image.tag }}"
+    environment: "{{ .Values.environment }}"
+    compliance.carbonxchange.io/pci-dss: "true"
+    compliance.carbonxchange.io/sox: "true"
+    compliance.carbonxchange.io/gdpr: "true"
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    security.carbonxchange.io/scan-date: '{{ now | date "2006-01-02T15:04:05Z" }}'
+    compliance.carbonxchange.io/data-classification: "confidential"
+spec:
+  replicas: { { .Values.backend.replicas } }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: '{{ .Values.backend.strategy.maxSurge | default "25%" }}'
+      maxUnavailable: '{{ .Values.backend.strategy.maxUnavailable | default "25%" }}'
+  selector:
+    matchLabels:
+      app: "{{ .Values.appName }}-backend"
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: "{{ .Values.appName }}-backend"
+        component: backend
+        tier: application
+        version: "{{ .Values.backend.image.tag }}"
+        environment: "{{ .Values.environment }}"
+        compliance.carbonxchange.io/pci-dss: "true"
+        compliance.carbonxchange.io/sox: "true"
+        compliance.carbonxchange.io/gdpr: "true"
+      annotations:
+        security.carbonxchange.io/pod-security-policy: "restricted"
+        compliance.carbonxchange.io/data-classification: "confidential"
+        backup.carbonxchange.io/enabled: "true"
+        backup.carbonxchange.io/schedule: '{{ .Values.backup.schedule | default "0 2 * * *" }}'
+    spec:
+      serviceAccountName: "{{ .Values.appName }}-backend-sa"
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+        supplementalGroups: [10001]
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - "{{ .Values.appName }}-backend"
+                topologyKey: kubernetes.io/hostname
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node.carbonxchange.io/workload-type
+                    operator: In
+                    values:
+                      - application
+                  - key: node.carbonxchange.io/security-zone
+                    operator: In
+                    values:
+                      - private
+      tolerations:
+        - key: "node.carbonxchange.io/dedicated"
+          operator: "Equal"
+          value: "application"
+          effect: "NoSchedule"
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: "{{ .Values.appName }}-backend"
+      initContainers:
+        - name: migration
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: "{{ .Values.backend.image.pullPolicy }}"
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Running database migrations..."
+              flask db upgrade
+              echo "Migrations completed successfully"
+          env:
+            - name: FLASK_ENV
+              value: "{{ .Values.environment }}"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.appName }}-secrets"
+                  key: database-url
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            limits:
+              cpu: '{{ .Values.backend.initContainer.resources.limits.cpu | default "500m" }}'
+              memory: '{{ .Values.backend.initContainer.resources.limits.memory | default "512Mi" }}'
+            requests:
+              cpu: '{{ .Values.backend.initContainer.resources.requests.cpu | default "100m" }}'
+              memory: '{{ .Values.backend.initContainer.resources.requests.memory | default "128Mi" }}'
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /app/.cache
+      containers:
+        - name: "{{ .Values.appName }}-backend"
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: "{{ .Values.backend.image.pullPolicy }}"
+          ports:
+            - name: http
+              containerPort: { { .Values.backend.containerPort } }
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - NET_BIND_SERVICE
+          resources:
+            limits:
+              cpu: "{{ .Values.backend.resources.limits.cpu }}"
+              memory: "{{ .Values.backend.resources.limits.memory }}"
+              ephemeral-storage: '{{ .Values.backend.resources.limits.ephemeralStorage | default "2Gi" }}'
+            requests:
+              cpu: "{{ .Values.backend.resources.requests.cpu }}"
+              memory: "{{ .Values.backend.resources.requests.memory }}"
+              ephemeral-storage: '{{ .Values.backend.resources.requests.ephemeralStorage | default "1Gi" }}'
+          env:
+            - name: FLASK_ENV
+              value: "{{ .Values.environment }}"
+            - name: PORT
+              value: "{{ .Values.backend.containerPort }}"
+            - name: LOG_LEVEL
+              value: '{{ .Values.backend.logLevel | default "info" }}'
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.appName }}-secrets"
+                  key: database-url
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.appName }}-secrets"
+                  key: secret-key
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.appName }}-secrets"
+                  key: jwt-secret-key
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.appName }}-secrets"
+                  key: encryption-key
+            - name: API_KEY_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.appName }}-secrets"
+                  key: api-key-salt
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.appName }}-secrets"
+                  key: redis-url
+            - name: AWS_REGION
+              value: "{{ .Values.aws.region }}"
+            - name: KMS_KEY_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: "{{ .Values.appName }}-config"
+                  key: kms-key-id
+            - name: S3_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: "{{ .Values.appName }}-config"
+                  key: s3-bucket
+            - name: CLOUDWATCH_LOG_GROUP
+              valueFrom:
+                configMapKeyRef:
+                  name: "{{ .Values.appName }}-config"
+                  key: cloudwatch-log-group
+            - name: ENABLE_AUDIT_LOGGING
+              value: "true"
+            - name: ENABLE_PERFORMANCE_MONITORING
+              value: "true"
+            - name: ENABLE_SECURITY_HEADERS
+              value: "true"
+            - name: CORS_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: "{{ .Values.appName }}-config"
+                  key: cors-origins
+            - name: RATE_LIMIT_WINDOW_MS
+              value: '{{ .Values.backend.rateLimit.windowMs | default "900000" }}'
+            - name: RATE_LIMIT_MAX_REQUESTS
+              value: '{{ .Values.backend.rateLimit.maxRequests | default "100" }}'
+            - name: SESSION_TIMEOUT_MINUTES
+              value: '{{ .Values.backend.session.timeoutMinutes | default "30" }}'
+            - name: MAX_LOGIN_ATTEMPTS
+              value: '{{ .Values.backend.security.maxLoginAttempts | default "5" }}'
+            - name: ACCOUNT_LOCKOUT_DURATION_MINUTES
+              value: '{{ .Values.backend.security.lockoutDurationMinutes | default "15" }}'
+            - name: PASSWORD_MIN_LENGTH
+              value: '{{ .Values.backend.security.passwordMinLength | default "12" }}'
+            - name: REQUIRE_MFA
+              value: '{{ .Values.backend.security.requireMFA | default "true" }}'
+            - name: ENABLE_TRANSACTION_SIGNING
+              value: '{{ .Values.backend.security.enableTransactionSigning | default "true" }}'
+            - name: DATA_RETENTION_DAYS
+              value: '{{ .Values.backend.compliance.dataRetentionDays | default "2555" }}'
+            - name: AUDIT_LOG_RETENTION_DAYS
+              value: '{{ .Values.backend.compliance.auditLogRetentionDays | default "2555" }}'
+            - name: ENABLE_GDPR_COMPLIANCE
+              value: '{{ .Values.backend.compliance.enableGDPR | default "true" }}'
+            - name: ENABLE_PCI_DSS_COMPLIANCE
+              value: '{{ .Values.backend.compliance.enablePCIDSS | default "true" }}'
+            - name: ENABLE_SOX_COMPLIANCE
+              value: '{{ .Values.backend.compliance.enableSOX | default "true" }}'
+          livenessProbe:
+            httpGet:
+              path: '{{ .Values.backend.health.livenessPath | default "/api/health" }}'
+              port: http
+              scheme: HTTP
+            initialDelaySeconds:
+              {
+                {
+                  .Values.backend.health.livenessProbe.initialDelaySeconds | default 60,
+                },
+              }
+            periodSeconds:
+              {
+                {
+                  .Values.backend.health.livenessProbe.periodSeconds | default 30,
+                },
+              }
+            timeoutSeconds:
+              {
+                {
+                  .Values.backend.health.livenessProbe.timeoutSeconds | default 10,
+                },
+              }
+            failureThreshold:
+              {
+                {
+                  .Values.backend.health.livenessProbe.failureThreshold | default 3,
+                },
+              }
+            successThreshold:
+              {
+                {
+                  .Values.backend.health.livenessProbe.successThreshold | default 1,
+                },
+              }
+          readinessProbe:
+            httpGet:
+              path: '{{ .Values.backend.health.readinessPath | default "/api/health" }}'
+              port: http
+              scheme: HTTP
+            initialDelaySeconds:
+              {
+                {
+                  .Values.backend.health.readinessProbe.initialDelaySeconds | default 30,
+                },
+              }
+            periodSeconds:
+              {
+                {
+                  .Values.backend.health.readinessProbe.periodSeconds | default 10,
+                },
+              }
+            timeoutSeconds:
+              {
+                {
+                  .Values.backend.health.readinessProbe.timeoutSeconds | default 5,
+                },
+              }
+            failureThreshold:
+              {
+                {
+                  .Values.backend.health.readinessProbe.failureThreshold | default 3,
+                },
+              }
+            successThreshold:
+              {
+                {
+                  .Values.backend.health.readinessProbe.successThreshold | default 1,
+                },
+              }
+          startupProbe:
+            httpGet:
+              path: '{{ .Values.backend.health.startupPath | default "/api/health" }}'
+              port: http
+              scheme: HTTP
+            initialDelaySeconds:
+              {
+                {
+                  .Values.backend.health.startupProbe.initialDelaySeconds | default 10,
+                },
+              }
+            periodSeconds:
+              {
+                {
+                  .Values.backend.health.startupProbe.periodSeconds | default 5,
+                },
+              }
+            timeoutSeconds:
+              {
+                {
+                  .Values.backend.health.startupProbe.timeoutSeconds | default 1,
+                },
+              }
+            failureThreshold:
+              {
+                {
+                  .Values.backend.health.startupProbe.failureThreshold | default 60,
+                },
+              }
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /app/.cache
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      imagePullSecrets:
+        - name: "{{ .Values.imagePullSecret }}"

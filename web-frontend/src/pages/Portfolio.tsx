@@ -1,279 +1,308 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
-  DollarSign,
-  Loader2,
-  Package,
-  TrendingDown,
+  Wallet,
   TrendingUp,
+  Layers,
+  PieChart as PieChartIcon,
 } from "lucide-react";
-import type React from "react";
-import { useCallback, useEffect, useState } from "react";
-import { Badge } from "../components/ui/badge";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as RTooltip,
+} from "recharts";
+import { PageHeader } from "@/components/PageHeader";
+import { StatCard } from "@/components/StatCard";
+import { EmptyState, ErrorState } from "@/components/StatusPieces";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../components/ui/tabs";
-import { getMyOrders, getPortfolio } from "../services/api";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  tradingApi,
+  apiErrorMessage,
+  type Portfolio as PortfolioType,
+  type PortfolioHolding,
+} from "@/services/api";
+import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 
-interface Holding {
-  creditId: string;
-  name: string;
-  quantity: number;
-  averagePrice: number;
-  currentPrice: number;
-  value: number;
-  profitLoss: number;
-  profitLossPercent: number;
-}
+const COLORS = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
+];
 
-interface Order {
-  id: string;
-  creditId: string;
-  creditName: string;
-  orderType: "buy" | "sell";
-  quantity: number;
-  price: number;
-  status: string;
-  createdAt: string;
-}
-
-const Portfolio: React.FC = () => {
-  const [portfolio, setPortfolio] = useState<any>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
+export function Portfolio() {
+  const [portfolios, setPortfolios] = useState<PortfolioType[]>([]);
+  const [holdings, setHoldings] = useState<PortfolioHolding[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
+  const load = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const [portfolioResponse, ordersResponse] = await Promise.all([
-        getPortfolio(),
-        getMyOrders(),
+      const [pRes, hRes] = await Promise.all([
+        tradingApi.portfolios(),
+        tradingApi.holdings(),
       ]);
-
-      setPortfolio(portfolioResponse.data || portfolioResponse);
-      setOrders(ordersResponse.data || []);
-    } catch (error) {
-      console.error("Failed to load portfolio data:", error);
+      setPortfolios(pRes.portfolios);
+      setHoldings(hRes.holdings);
+    } catch (err) {
+      setError(apiErrorMessage(err, "We couldn't load your portfolio."));
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    load();
+  }, []);
+
+  const totalValue = portfolios.reduce((s, p) => s + (p.total_value || 0), 0);
+  const totalPnl = portfolios.reduce((s, p) => s + (p.total_pnl || 0), 0);
+  const totalCredits = portfolios.reduce(
+    (s, p) => s + (p.total_credits || 0),
+    0,
+  );
+
+  const chartData = holdings
+    .filter((h) => (h.current_value ?? 0) > 0)
+    .map((h, i) => ({
+      name: h.vintage_year ? `Vintage ${h.vintage_year}` : `Holding ${i + 1}`,
+      value: h.current_value ?? 0,
+    }));
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-64" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-lg" />
+          ))}
+        </div>
+        <Skeleton className="h-96 w-full" />
       </div>
     );
   }
 
-  const totalProfitLoss =
-    portfolio?.holdings?.reduce(
-      (sum: number, h: Holding) => sum + h.profitLoss,
-      0,
-    ) || 0;
+  if (error) return <ErrorState description={error} onRetry={load} />;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Portfolio</h1>
-        <p className="text-muted-foreground">
-          Manage your carbon credit holdings
-        </p>
+    <div>
+      <PageHeader
+        eyebrow="Portfolio"
+        title="Your holdings"
+        description="Everything you currently hold, its cost basis, and unrealized performance."
+        actions={
+          <Button asChild variant="outline">
+            <Link to="/transactions">View transaction history</Link>
+          </Button>
+        }
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Total value"
+          value={formatCurrency(totalValue)}
+          icon={Wallet}
+        />
+        <StatCard
+          label="Unrealized P&amp;L"
+          value={`${totalPnl >= 0 ? "+" : ""}${formatCurrency(totalPnl)}`}
+          icon={TrendingUp}
+          tone={totalPnl >= 0 ? "gain" : "loss"}
+        />
+        <StatCard
+          label="Credits held"
+          value={formatNumber(totalCredits, 0)}
+          icon={Layers}
+          hint="tCO₂e"
+        />
+        <StatCard
+          label="Holdings"
+          value={String(holdings.length)}
+          icon={PieChartIcon}
+        />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base">Holdings</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${portfolio?.totalValue?.toFixed(2) || "0.00"}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Credits</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {portfolio?.totalCredits?.toLocaleString() || "0"}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total P/L</CardTitle>
-            {totalProfitLoss >= 0 ? (
-              <TrendingUp className="h-4 w-4 text-green-600" />
+          <CardContent className="p-0">
+            {holdings.length === 0 ? (
+              <div className="p-5">
+                <EmptyState
+                  icon={Wallet}
+                  title="No holdings yet"
+                  description="Buy your first credits from the trade desk to see them here."
+                  action={
+                    <Button asChild size="sm">
+                      <Link to="/trade">Go to trade desk</Link>
+                    </Button>
+                  }
+                />
+              </div>
             ) : (
-              <TrendingDown className="h-4 w-4 text-red-600" />
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Vintage</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Avg. cost</TableHead>
+                    <TableHead>Current price</TableHead>
+                    <TableHead>Value</TableHead>
+                    <TableHead className="text-right">P&amp;L</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {holdings.map((h) => (
+                    <TableRow key={h.id}>
+                      <TableCell>{h.vintage_year || "—"}</TableCell>
+                      <TableCell className="font-mono-num">
+                        {formatNumber(h.quantity, 0)}
+                      </TableCell>
+                      <TableCell className="font-mono-num">
+                        {formatCurrency(h.average_cost, h.currency)}
+                      </TableCell>
+                      <TableCell className="font-mono-num">
+                        {h.current_price
+                          ? formatCurrency(h.current_price, h.currency)
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="font-mono-num">
+                        {h.current_value
+                          ? formatCurrency(h.current_value, h.currency)
+                          : "—"}
+                      </TableCell>
+                      <TableCell
+                        className={`text-right font-mono-num ${h.total_pnl >= 0 ? "text-gain" : "text-loss"}`}
+                      >
+                        {h.total_pnl >= 0 ? "+" : ""}
+                        {formatCurrency(h.total_pnl, h.currency)}
+                        <span className="ml-1 text-xs">
+                          ({h.pnl_percentage >= 0 ? "+" : ""}
+                          {h.pnl_percentage.toFixed(1)}%)
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Allocation by vintage</CardTitle>
           </CardHeader>
           <CardContent>
-            <div
-              className={`text-2xl font-bold ${totalProfitLoss >= 0 ? "text-green-600" : "text-red-600"}`}
-            >
-              ${Math.abs(totalProfitLoss).toFixed(2)}
-            </div>
+            {chartData.length === 0 ? (
+              <p className="py-10 text-center text-sm text-muted-foreground">
+                Nothing to chart yet.
+              </p>
+            ) : (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={55}
+                      outerRadius={85}
+                      paddingAngle={2}
+                    >
+                      {chartData.map((_, i) => (
+                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RTooltip formatter={(v: number) => formatCurrency(v)} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            <ul className="mt-2 space-y-1.5">
+              {chartData.map((d, i) => (
+                <li
+                  key={d.name}
+                  className="flex items-center justify-between text-xs"
+                >
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                    />
+                    {d.name}
+                  </span>
+                  <span className="font-mono-num">
+                    {formatCurrency(d.value)}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="holdings" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="holdings">Holdings</TabsTrigger>
-          <TabsTrigger value="orders">Orders</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="holdings" className="space-y-4">
-          {portfolio?.holdings && portfolio.holdings.length > 0 ? (
-            portfolio.holdings.map((holding: Holding) => (
-              <Card key={holding.creditId}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{holding.name}</CardTitle>
-                      <CardDescription>
-                        {holding.quantity} credits @ ${holding.averagePrice}
-                      </CardDescription>
-                    </div>
-                    <Badge
-                      variant={
-                        holding.profitLoss >= 0 ? "default" : "destructive"
-                      }
-                    >
-                      {holding.profitLoss >= 0 ? "+" : ""}$
-                      {holding.profitLoss.toFixed(2)}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Current Price</p>
-                      <p className="font-semibold">${holding.currentPrice}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Total Value</p>
-                      <p className="font-semibold">
-                        ${holding.value.toFixed(2)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">P/L %</p>
-                      <p
-                        className={`font-semibold ${holding.profitLossPercent >= 0 ? "text-green-600" : "text-red-600"}`}
-                      >
-                        {holding.profitLossPercent >= 0 ? "+" : ""}
-                        {holding.profitLossPercent.toFixed(2)}%
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Quantity</p>
-                      <p className="font-semibold">{holding.quantity}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground">
-                  No holdings yet. Start trading to build your portfolio!
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="orders" className="space-y-4">
-          {orders && orders.length > 0 ? (
-            orders.map((order) => (
-              <Card key={order.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">
-                        {order.creditName}
-                      </CardTitle>
-                      <CardDescription>
-                        {new Date(order.createdAt).toLocaleDateString()}
-                      </CardDescription>
-                    </div>
-                    <div className="flex gap-2">
-                      <Badge
-                        variant={
-                          order.orderType === "buy" ? "default" : "secondary"
-                        }
-                      >
-                        {order.orderType.toUpperCase()}
-                      </Badge>
-                      <Badge
-                        variant={
-                          order.status === "completed"
-                            ? "default"
-                            : order.status === "pending"
-                              ? "secondary"
-                              : "destructive"
-                        }
-                      >
-                        {order.status}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Quantity</p>
-                      <p className="font-semibold">{order.quantity}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Price</p>
-                      <p className="font-semibold">${order.price}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Total</p>
-                      <p className="font-semibold">
-                        ${(order.quantity * order.price).toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground">
-                  No orders yet. Place your first order to get started!
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+      {portfolios.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-base">Portfolios</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Value</TableHead>
+                  <TableHead>Holdings</TableHead>
+                  <TableHead className="text-right">Last valued</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {portfolios.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell className="capitalize text-muted-foreground">
+                      {p.portfolio_type}
+                    </TableCell>
+                    <TableCell className="font-mono-num">
+                      {formatCurrency(p.total_value, p.base_currency)}
+                    </TableCell>
+                    <TableCell className="font-mono-num">
+                      {p.number_of_holdings}
+                    </TableCell>
+                    <TableCell className="text-right text-xs text-muted-foreground">
+                      {p.last_valuation_at
+                        ? formatDate(p.last_valuation_at)
+                        : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
-};
+}
 
 export default Portfolio;

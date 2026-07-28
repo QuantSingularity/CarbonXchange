@@ -130,23 +130,21 @@ Unified service management for starting, stopping, and monitoring CarbonXchange 
 
 ### Commands
 
-| Command   | Arguments         | Description          | Example                                         |
-| --------- | ----------------- | -------------------- | ----------------------------------------------- |
-| `start`   | [service]         | Start service(s)     | `./cx_service_orchestrator.sh start backend`    |
-| `stop`    | [service]         | Stop service(s)      | `./cx_service_orchestrator.sh stop`             |
-| `restart` | [service]         | Restart service(s)   | `./cx_service_orchestrator.sh restart frontend` |
-| `status`  | [service]         | Check service status | `./cx_service_orchestrator.sh status`           |
-| `logs`    | [service] [lines] | View service logs    | `./cx_service_orchestrator.sh logs backend 100` |
-| `health`  | -                 | Check service health | `./cx_service_orchestrator.sh health`           |
+| Command   | Arguments              | Description                           | Example                                        |
+| --------- | ---------------------- | ------------------------------------- | ---------------------------------------------- |
+| `start`   | [service]              | Start service(s)                      | `./cx_service_orchestrator.sh start backend`   |
+| `stop`    | [service]              | Stop service(s)                       | `./cx_service_orchestrator.sh stop`            |
+| `restart` | `<service>` (required) | Restart a specific service            | `./cx_service_orchestrator.sh restart backend` |
+| `status`  | -                      | Check status of all services          | `./cx_service_orchestrator.sh status`          |
+| `logs`    | `<service>` (required) | Tail a service's log (Ctrl+C to exit) | `./cx_service_orchestrator.sh logs backend`    |
 
 ### Service Names
 
 - `backend` - Flask API server (port 5000)
-- `frontend` - React web application (port 3000)
-- `database` - PostgreSQL database
-- `redis` - Redis cache server
-- `blockchain` - Local blockchain node (if configured)
-- `all` - All services (default if no service specified)
+- `blockchain` - Local Truffle/Ganache blockchain node (port 8545)
+- `web_frontend` - Vite web application (port 5173)
+- `mobile_frontend` - Expo/Metro mobile app (port 8081)
+- (omit the service argument to `start`/`stop` to act on all of them)
 
 ### Usage Examples
 
@@ -172,23 +170,22 @@ cd scripts/orchestration
 Output example:
 
 ```
-Backend API:     ✓ Running (PID 12345, port 5000)
-Frontend:        ✓ Running (PID 12346, port 3000)
-Database:        ✓ Running (port 5432)
-Redis:           ✓ Running (port 6379)
-Blockchain:      ✗ Not configured
+backend: RUNNING (PID: 12345)
+blockchain: RUNNING (PID: 12346)
+web_frontend: RUNNING (PID: 12347)
+mobile_frontend: STOPPED
 ```
 
-**View logs (last 50 lines):**
+**Tail backend logs:**
 
 ```bash
-./cx_service_orchestrator.sh logs backend 50
+./cx_service_orchestrator.sh logs backend
 ```
 
-**Restart frontend after code changes:**
+**Restart the web frontend after code changes:**
 
 ```bash
-./cx_service_orchestrator.sh restart frontend
+./cx_service_orchestrator.sh restart web_frontend
 ```
 
 **Stop all services:**
@@ -201,52 +198,46 @@ Blockchain:      ✗ Not configured
 
 **Script**: `scripts/testing/cx_test_runner.sh`
 
-Execute automated tests with coverage reporting and multiple test types.
+Execute automated tests across every component, with an optional coverage report and git hook setup.
 
 ### Commands
 
-| Command         | Description              | Example                                            |
-| --------------- | ------------------------ | -------------------------------------------------- |
-| `--all`         | Run all test suites      | `./cx_test_runner.sh --all`                        |
-| `--unit`        | Run unit tests only      | `./cx_test_runner.sh --unit`                       |
-| `--integration` | Run integration tests    | `./cx_test_runner.sh --integration`                |
-| `--e2e`         | Run end-to-end tests     | `./cx_test_runner.sh --e2e`                        |
-| `--coverage`    | Generate coverage report | `./cx_test_runner.sh --coverage`                   |
-| `--file <path>` | Run specific test file   | `./cx_test_runner.sh --file tests/test_trading.py` |
-| `--watch`       | Run tests in watch mode  | `./cx_test_runner.sh --watch`                      |
-| `--parallel`    | Run tests in parallel    | `./cx_test_runner.sh --all --parallel`             |
+| Command       | Arguments   | Description                                                              | Example                            |
+| ------------- | ----------- | ------------------------------------------------------------------------ | ---------------------------------- |
+| `unit`        | [component] | Run unit tests (all components, or just one)                             | `./cx_test_runner.sh unit backend` |
+| `integration` | [component] | Run integration tests                                                    | `./cx_test_runner.sh integration`  |
+| `e2e`         | -           | Run end-to-end tests (requires running services, needs a Cypress config) | `./cx_test_runner.sh e2e`          |
+| `all`         | -           | Run unit + integration + e2e for every component                         | `./cx_test_runner.sh all`          |
+| `coverage`    | -           | Generate coverage reports for every component                            | `./cx_test_runner.sh coverage`     |
+| `hooks`       | -           | Install a git pre-commit hook (lint + unit tests)                        | `./cx_test_runner.sh hooks`        |
+
+Valid component names for `unit`/`integration`: `backend`, `blockchain`, `web-frontend`, `mobile-frontend`, `ai-models`.
 
 ### Usage Examples
 
-**Run all tests with coverage:**
+**Run everything:**
 
 ```bash
 cd scripts/testing
-./cx_test_runner.sh --all --coverage
+./cx_test_runner.sh all
 ```
 
 **Run only backend unit tests:**
 
 ```bash
-./cx_test_runner.sh --unit
+./cx_test_runner.sh unit backend
 ```
 
-**Run specific test file:**
+**Generate coverage reports:**
 
 ```bash
-./cx_test_runner.sh --file code/backend/tests/test_trading_service.py
+./cx_test_runner.sh coverage
 ```
 
-**Run tests in watch mode (development):**
+**Install the pre-commit hook:**
 
 ```bash
-./cx_test_runner.sh --watch
-```
-
-**Run tests in parallel (faster):**
-
-```bash
-./cx_test_runner.sh --all --parallel
+./cx_test_runner.sh hooks
 ```
 
 Output example:
@@ -284,12 +275,13 @@ Automate deployment to different environments with rollback capabilities.
 
 ### Commands
 
-| Command    | Arguments | Description              | Example                              |
-| ---------- | --------- | ------------------------ | ------------------------------------ |
-| `deploy`   | <env>     | Deploy to environment    | `./cx_deploy.sh deploy production`   |
-| `rollback` | <env>     | Rollback last deployment | `./cx_deploy.sh rollback production` |
-| `status`   | <env>     | Check deployment status  | `./cx_deploy.sh status staging`      |
-| `validate` | <env>     | Validate configuration   | `./cx_deploy.sh validate production` |
+| Command    | Arguments | Description                                    | Example                              |
+| ---------- | --------- | ---------------------------------------------- | ------------------------------------ |
+| `build`    | `<env>`   | Generate config and build all components       | `./cx_deploy.sh build dev`           |
+| `deploy`   | `<env>`   | Deploy the latest build to the environment     | `./cx_deploy.sh deploy production`   |
+| `validate` | `<env>`   | Run post-deployment validation checks          | `./cx_deploy.sh validate production` |
+| `rollback` | `<env>`   | Rollback to the previous successful deployment | `./cx_deploy.sh rollback production` |
+| `all`      | `<env>`   | Run build, deploy, and validate sequentially   | `./cx_deploy.sh all production`      |
 
 ### Environments
 
@@ -344,10 +336,10 @@ Version 1.0.1 deployed to production
 ./cx_deploy.sh rollback production
 ```
 
-**Check deployment status:**
+**Run post-deployment validation:**
 
 ```bash
-./cx_deploy.sh status production
+./cx_deploy.sh validate production
 ```
 
 ## Data Management

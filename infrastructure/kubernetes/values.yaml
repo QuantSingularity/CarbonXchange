@@ -1,0 +1,167 @@
+# Default values for the carbonxchange chart.
+# This is the chart-required default values.yaml (Helm looks for this file
+# at the chart root). It mirrors environments/dev/values.yaml as a safe
+# baseline — for an actual deployment, layer the environment-specific file
+# on top, e.g.:
+#   helm install carbonxchange . -f environments/staging/values.yaml
+#   helm install carbonxchange . -f environments/prod/values.yaml
+appName: carbonxchange
+namespace: carbonxchange
+environment: dev
+
+aws:
+  region: us-west-2
+  kmsKeyId: ""
+  s3Bucket: "carbonxchange-dev-assets"
+  cloudwatchLogGroup: "/carbonxchange/dev"
+
+backend:
+  replicas: 2
+  image:
+    repository: registry.example.com/app/backend
+    tag: latest
+    pullPolicy: Always
+  containerPort: 5000
+  servicePort: 80
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  apiUrl: http://carbonxchange-backend
+  secretKey: dev-flask-secret-key-change-in-vault-32ch
+  jwtSecret: dev-jwt-secret-change-in-vault
+  apiKey: dev-api-key-change-in-vault
+  encryptionKey: dev-encryption-key-32-chars-long!!
+  apiKeySalt: dev-api-key-salt-change-in-vault
+  corsOrigins: "http://localhost:3000,https://dev.carbonxchange.example.com"
+  logLevel: debug
+  metrics:
+    port: 9090
+    path: /metrics
+  health:
+    port: 8080
+    livenessPath: /api/health
+    readinessPath: /api/health
+    startupPath: /api/health
+    livenessProbe:
+      initialDelaySeconds: 60
+      periodSeconds: 30
+      timeoutSeconds: 10
+      failureThreshold: 3
+      successThreshold: 1
+    readinessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
+    startupProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      timeoutSeconds: 1
+      failureThreshold: 60
+  strategy:
+    maxSurge: "25%"
+    maxUnavailable: "25%"
+  rateLimit:
+    windowMs: "900000"
+    maxRequests: "100"
+  session:
+    timeoutMinutes: "30"
+  security:
+    maxLoginAttempts: "5"
+    lockoutDurationMinutes: "15"
+    passwordMinLength: "12"
+    requireMFA: "false"
+    enableTransactionSigning: "true"
+  compliance:
+    dataRetentionDays: "2555"
+    auditLogRetentionDays: "2555"
+    enableGDPR: "true"
+    enablePCIDSS: "true"
+    enableSOX: "true"
+  initContainer:
+    resources:
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+
+frontend:
+  replicas: 2
+  image:
+    repository: registry.example.com/app/frontend
+    tag: latest
+    pullPolicy: Always
+  containerPort: 80
+  servicePort: 80
+  apiUrl: /api
+  service:
+    type: ClusterIP
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+database:
+  replicas: 1
+  image:
+    repository: postgres
+    tag: "15-alpine"
+    pullPolicy: IfNotPresent
+  containerPort: 5432
+  servicePort: 5432
+  name: carbonxchangedb
+  user: appuser
+  password: dev-db-password-change-me
+  url: "postgresql://appuser:dev-db-password-change-me@carbonxchange-database:5432/carbonxchangedb"
+  storageClass: standard
+  storage: 10Gi
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+redis:
+  replicas: 1
+  image:
+    repository: redis
+    tag: "7.2-alpine"
+    pullPolicy: IfNotPresent
+  containerPort: 6379
+  servicePort: 6379
+  password: dev-redis-password-change-me
+  url: "redis://:dev-redis-password-change-me@carbonxchange-redis:6379"
+  storageClass: standard
+  storage: 5Gi
+  resources:
+    limits:
+      cpu: 300m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+ingress:
+  host: dev.carbonxchange.example.com
+  class: nginx
+  sslRedirect: "true"
+  certManager:
+    issuer: letsencrypt-staging
+
+backup:
+  schedule: "0 2 * * *"
+
+logLevel: debug
+imagePullSecret: regcred

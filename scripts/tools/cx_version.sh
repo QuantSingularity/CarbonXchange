@@ -32,33 +32,26 @@ log() {
     echo -e "${color}[$level] $message${NC}" >&2
 }
 
-# Function to get the current version from package.json
+# Function to get the current version from the root VERSION file
 get_current_version() {
-    local version_file="$PROJECT_ROOT/package.json"
+    local version_file="$PROJECT_ROOT/VERSION"
     if [ -f "$version_file" ]; then
-        # Use grep and sed to safely extract the version number
-        grep '"version":' "$version_file" | sed -E 's/.*"version": "([^"]+)".*/\1/'
+        tr -d '[:space:]' < "$version_file"
     else
-        log "WARNING" "package.json not found. Assuming version 0.0.0."
+        log "WARNING" "VERSION file not found at $version_file. Assuming version 0.0.0."
         echo "0.0.0"
     fi
 }
 
-# Function to set the version in package.json
+# Function to set the version in the root VERSION file
 set_version() {
     local new_version="$1"
-    local version_file="$PROJECT_ROOT/package.json"
+    local version_file="$PROJECT_ROOT/VERSION"
     local current_version
     current_version=$(get_current_version)
 
-    if [ -f "$version_file" ]; then
-        # Use sed to replace the version number
-        sed -i -E "s/\"version\": \"$current_version\"/\"version\": \"$new_version\"/" "$version_file"
-        log "INFO" "Version updated from $current_version to $new_version in package.json."
-    else
-        log "ERROR" "package.json not found. Cannot set version."
-        return 1
-    fi
+    echo "$new_version" > "$version_file"
+    log "INFO" "Version updated from $current_version to $new_version in VERSION."
 }
 
 # Function to bump the version

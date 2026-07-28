@@ -6,9 +6,9 @@
 database_name: carbonxchangedb
 database_user: appuser
 database_max_connections: 150
-database_max_allowed_packet: "64M"
-database_innodb_buffer_pool_size: "256M"
-database_innodb_log_file_size: "64M"
+database_shared_buffers: "256MB"
+database_effective_cache_size: "768MB"
+database_work_mem: "4MB"
+database_ssl_enabled: "on"
 # SECURITY: Store passwords in vault.yml, not here
 # database_password: "{{ vault_database_password }}"
-# database_root_password: "{{ vault_database_root_password }}"

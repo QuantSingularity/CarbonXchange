@@ -14,7 +14,7 @@ backend:
     repository: registry.example.com/app/backend
     tag: stable
     pullPolicy: Always
-  containerPort: 3000
+  containerPort: 5000
   servicePort: 80
   resources:
     limits:
@@ -24,6 +24,7 @@ backend:
       cpu: 500m
       memory: 512Mi
   apiUrl: http://carbonxchange-backend
+  secretKey: staging-flask-secret-key-change-in-vault
   jwtSecret: staging-jwt-secret-change-in-vault
   apiKey: staging-api-key-change-in-vault
   encryptionKey: staging-encryption-key-32-chars!!!
@@ -35,9 +36,9 @@ backend:
     path: /metrics
   health:
     port: 8080
-    livenessPath: /health/live
-    readinessPath: /health/ready
-    startupPath: /health/startup
+    livenessPath: /api/health
+    readinessPath: /api/health
+    startupPath: /api/health
     livenessProbe:
       initialDelaySeconds: 60
       periodSeconds: 30
@@ -106,16 +107,15 @@ frontend:
 database:
   replicas: 1
   image:
-    repository: mysql
-    tag: "8.0"
+    repository: postgres
+    tag: "15-alpine"
     pullPolicy: IfNotPresent
-  containerPort: 3306
-  servicePort: 3306
+  containerPort: 5432
+  servicePort: 5432
   name: carbonxchangedb
   user: appuser
   password: staging-db-password-change-in-vault
-  rootPassword: staging-root-password-change-in-vault
-  url: "mysql://appuser:staging-db-password-change-in-vault@carbonxchange-database:3306/carbonxchangedb"
+  url: "postgresql://appuser:staging-db-password-change-in-vault@carbonxchange-database:5432/carbonxchangedb"
   storageClass: standard
   storage: 20Gi
   resources:

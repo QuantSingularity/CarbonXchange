@@ -93,3 +93,156 @@ variable "security_alert_email_addresses" {
   type        = list(string)
   default     = []
 }
+
+# --- The following were referenced via var.X throughout main.tf/outputs.tf
+# but never declared, which would fail `terraform validate` immediately. ---
+
+variable "cpu_alarm_threshold" {
+  description = "CPU utilization percentage that triggers an alarm"
+  type        = number
+  default     = 80
+}
+
+variable "memory_alarm_threshold" {
+  description = "Memory utilization percentage that triggers an alarm"
+  type        = number
+  default     = 80
+}
+
+variable "db_cpu_alarm_threshold" {
+  description = "Database CPU utilization percentage that triggers an alarm"
+  type        = number
+  default     = 80
+}
+
+variable "db_connection_alarm_threshold" {
+  description = "Number of database connections that triggers an alarm"
+  type        = number
+  default     = 80
+}
+
+variable "error_rate_threshold" {
+  description = "Number of 5XX errors in a 5-minute period that triggers an alarm"
+  type        = number
+  default     = 10
+}
+
+variable "response_time_threshold" {
+  description = "Application response time in seconds that triggers an alarm"
+  type        = number
+  default     = 2
+}
+
+variable "failed_login_threshold" {
+  description = "Number of failed login attempts that triggers a security alarm"
+  type        = number
+  default     = 5
+}
+
+variable "suspicious_activity_threshold" {
+  description = "Threshold for flagging suspicious account activity"
+  type        = number
+  default     = 10
+}
+
+variable "load_balancer_arn_suffix" {
+  description = "ARN suffix of the load balancer, for CloudWatch dimensions"
+  type        = string
+  default     = ""
+}
+
+variable "waf_web_acl_name" {
+  description = "Name of the WAF Web ACL to monitor"
+  type        = string
+  default     = ""
+}
+
+variable "api_endpoint_url" {
+  description = "URL of the API endpoint for synthetic monitoring"
+  type        = string
+  default     = ""
+}
+
+variable "security_response_lambda_arn" {
+  description = "ARN of the Lambda function that handles automated security responses"
+  type        = string
+  default     = ""
+}
+
+variable "enable_automated_response" {
+  description = "Whether to enable automated response to security alerts (requires security_response_lambda_arn)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_synthetics" {
+  description = "Whether to enable CloudWatch Synthetics canary monitoring"
+  type        = bool
+  default     = false
+}
+
+variable "synthetics_schedule" {
+  description = "Schedule expression for the synthetics canary"
+  type        = string
+  default     = "rate(5 minutes)"
+}
+
+variable "enable_xray_tracing" {
+  description = "Whether to enable AWS X-Ray tracing"
+  type        = bool
+  default     = false
+}
+
+variable "performance_monitoring_enabled" {
+  description = "Whether performance monitoring is enabled (reflected in compliance output)"
+  type        = bool
+  default     = true
+}
+
+variable "business_metrics_enabled" {
+  description = "Whether custom business metrics collection is enabled"
+  type        = bool
+  default     = false
+}
+
+variable "compliance_monitoring_enabled" {
+  description = "Whether compliance monitoring is enabled"
+  type        = bool
+  default     = true
+}
+
+variable "log_analysis_enabled" {
+  description = "Whether automated log analysis is enabled"
+  type        = bool
+  default     = true
+}
+
+variable "audit_trail_enabled" {
+  description = "Whether the audit trail is enabled"
+  type        = bool
+  default     = true
+}
+
+variable "regulatory_requirements" {
+  description = "List of regulatory frameworks this environment must comply with (e.g. SOC2, PCI-DSS)"
+  type        = list(string)
+  default     = []
+}
+
+variable "cost_monitoring_enabled" {
+  description = "Whether cost monitoring and budget alerts are enabled"
+  type        = bool
+  default     = true
+}
+
+variable "cost_alert_threshold_percentage" {
+  description = "Percentage of the monthly budget that triggers a cost alert"
+  type        = number
+  default     = 80
+}
+
+variable "monthly_budget_limit" {
+  description = "Monthly budget limit in USD for cost alerts"
+  type        = number
+  default     = 1000
+}

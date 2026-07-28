@@ -26,14 +26,14 @@ spec:
               component: frontend
       ports:
         - protocol: TCP
-          port: 3000
+          port: 5000
     - from:
         - namespaceSelector:
             matchLabels:
               name: ingress-nginx
       ports:
         - protocol: TCP
-          port: 3000
+          port: 5000
     - from:
         - podSelector:
             matchLabels:
@@ -49,7 +49,7 @@ spec:
               component: api-gateway
       ports:
         - protocol: TCP
-          port: 3000
+          port: 5000
   egress:
     - to: []
       ports:
@@ -63,7 +63,7 @@ spec:
               component: database
       ports:
         - protocol: TCP
-          port: 3306
+          port: 5432
     - to:
         - podSelector:
             matchLabels:
@@ -83,7 +83,7 @@ spec:
         - protocol: TCP
           port: 9090
         - protocol: TCP
-          port: 3000
+          port: 5000
 
 ---
 apiVersion: networking.k8s.io/v1
@@ -133,7 +133,7 @@ spec:
               component: backend
       ports:
         - protocol: TCP
-          port: 3000
+          port: 5000
     - to: []
       ports:
         - protocol: TCP
@@ -171,21 +171,21 @@ spec:
               component: backend
       ports:
         - protocol: TCP
-          port: 3306
+          port: 5432
     - from:
         - podSelector:
             matchLabels:
               component: monitoring
       ports:
         - protocol: TCP
-          port: 3306
+          port: 5432
     - from:
         - podSelector:
             matchLabels:
               component: backup
       ports:
         - protocol: TCP
-          port: 3306
+          port: 5432
   egress:
     - to: []
       ports:
@@ -200,7 +200,7 @@ spec:
               role: replica
       ports:
         - protocol: TCP
-          port: 3306
+          port: 5432
 
 ---
 apiVersion: networking.k8s.io/v1
@@ -276,7 +276,7 @@ spec:
               name: ingress-nginx
       ports:
         - protocol: TCP
-          port: 3000
+          port: 5000
     - from:
         - podSelector:
             matchLabels:
@@ -299,14 +299,14 @@ spec:
         - protocol: TCP
           port: 9090
         - protocol: TCP
-          port: 3000
+          port: 5000
     - to:
         - podSelector:
             matchLabels:
               component: database
       ports:
         - protocol: TCP
-          port: 3306
+          port: 5432
     - to: []
       ports:
         - protocol: TCP

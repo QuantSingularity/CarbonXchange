@@ -1,7 +1,7 @@
-import { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { useRoute } from "@react-navigation/native";
 import {
-  ActivityIndicator,
-  Alert,
+  FlatList,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -11,304 +11,450 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { createTrade } from "../../services/api";
-import theme from "../../styles/theme"; // Import the theme
+import { Ionicons } from "@expo/vector-icons";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
+import { marketApi, tradingApi, apiErrorMessage } from "../../services/api";
+import { formatCurrency, formatNumber, humanize } from "../../utils/format";
+import theme from "../../styles/theme";
 
-const TradingScreen = ({ route, navigation }) => {
-  const { creditId, price, availableAmount } = route.params;
-  const [amount, setAmount] = useState("");
-  const [tradeType, setTradeType] = useState("buy"); // Default to 'buy'
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+const POLL_MS = 15000;
+const ORDER_TYPES = ["market", "limit", "stop", "stop_limit"];
 
-  const handleCreateTrade = async () => {
-    setError(null);
-    const tradeAmount = parseFloat(amount); // Use parseFloat for potentially fractional amounts
+const TradingScreen = () => {
+  const route = useRoute();
+  const [symbolInput, setSymbolInput] = useState(
+    route.params?.creditType || "",
+  );
+  const [symbol, setSymbol] = useState(route.params?.creditType || "");
 
-    if (Number.isNaN(tradeAmount) || tradeAmount <= 0) {
-      Alert.alert("Error", "Please enter a valid positive amount.");
+  const [ticker, setTicker] = useState(null);
+  const [depth, setDepth] = useState(null);
+  const [recentTrades, setRecentTrades] = useState([]);
+  const [marketLoading, setMarketLoading] = useState(false);
+
+  const [side, setSide] = useState("buy");
+  const [orderType, setOrderType] = useState("market");
+  const [quantity, setQuantity] = useState("");
+  const [price, setPrice] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [formMessage, setFormMessage] = useState(null);
+
+  const pollRef = useRef(null);
+
+  const loadMarket = async (sym) => {
+    if (!sym.trim()) {
+      setTicker(null);
+      setDepth(null);
+      setRecentTrades([]);
       return;
     }
-
-    // Add check for available amount if selling
-    if (
-      tradeType === "sell" &&
-      availableAmount !== undefined &&
-      tradeAmount > availableAmount
-    ) {
-      Alert.alert(
-        "Error",
-        `You cannot sell more than the available amount (${availableAmount} tCO2e).`,
-      );
-      return;
-    }
-    // TODO: Add check for user's buying power/balance if implementing 'buy'
-
-    setIsLoading(true);
+    setMarketLoading(true);
     try {
-      const tradeData = {
-        creditId,
-        amount: tradeAmount,
-        price: parseFloat(price), // Ensure price is a number
-        type: tradeType,
-      };
-      const response = await createTrade(tradeData);
-      if (response.success) {
-        Alert.alert("Success", `Trade order created successfully!`);
-        // Optionally, pass back data or refresh previous screen
-        navigation.goBack();
-      } else {
-        const errorMessage =
-          response.error?.message || "Failed to create trade order";
-        setError(errorMessage);
-        Alert.alert("Error", errorMessage);
-      }
-    } catch (err) {
-      const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        "An error occurred while creating the trade";
-      setError(errorMessage);
-      Alert.alert("Error", errorMessage);
+      const [t, d, r] = await Promise.allSettled([
+        marketApi.ticker(sym),
+        marketApi.depth(sym, 6),
+        marketApi.recentTrades({ credit_type: sym, limit: 8 }),
+      ]);
+      setTicker(t.status === "fulfilled" ? t.value : null);
+      setDepth(d.status === "fulfilled" ? d.value : null);
+      setRecentTrades(r.status === "fulfilled" ? r.value.trades : []);
     } finally {
-      setIsLoading(false);
+      setMarketLoading(false);
     }
   };
 
-  const calculatedTotal = () => {
-    const tradeAmount = parseFloat(amount);
-    const currentPrice = parseFloat(price);
-    if (
-      !Number.isNaN(tradeAmount) &&
-      !Number.isNaN(currentPrice) &&
-      tradeAmount > 0
-    ) {
-      return (tradeAmount * currentPrice).toFixed(2);
+  useEffect(() => {
+    loadMarket(symbol);
+    if (pollRef.current) clearInterval(pollRef.current);
+    if (symbol.trim())
+      pollRef.current = setInterval(() => loadMarket(symbol), POLL_MS);
+    return () => pollRef.current && clearInterval(pollRef.current);
+  }, [symbol]);
+
+  const handleSubmitOrder = async () => {
+    setFormMessage(null);
+    const qty = Number(quantity);
+
+    if (!symbol.trim())
+      return setFormMessage("Look up a credit type above first.");
+    if (!qty || qty <= 0)
+      return setFormMessage("Enter a quantity greater than zero.");
+    if (orderType !== "market" && (!price || Number(price) <= 0)) {
+      return setFormMessage("Enter a limit price for non-market orders.");
     }
-    return "0.00";
+
+    setSubmitting(true);
+    try {
+      const { order } = await tradingApi.createOrder({
+        order_type: orderType,
+        side,
+        quantity: qty,
+        credit_type: symbol.trim(),
+        price: orderType !== "market" ? Number(price) : undefined,
+      });
+      setFormMessage({
+        success: true,
+        text: `Order ${order.order_id} placed.`,
+      });
+      setQuantity("");
+      setPrice("");
+      loadMarket(symbol);
+    } catch (err) {
+      setFormMessage(apiErrorMessage(err, "We couldn't place that order."));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
+      style={styles.root}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.innerContainer}>
-          <Text style={styles.title}>Initiate Trade</Text>
-
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>Credit Details</Text>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Credit ID:</Text>
-              <Text
-                style={styles.infoValue}
-                numberOfLines={1}
-                ellipsizeMode="middle"
-              >
-                {creditId || "N/A"}
-              </Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Current Price:</Text>
-              <Text style={styles.infoValue}>
-                ${parseFloat(price).toFixed(2) || "N/A"} / tCO2e
-              </Text>
-            </View>
-            {availableAmount !== undefined && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Available:</Text>
-                <Text style={styles.infoValue}>{availableAmount} tCO2e</Text>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.tradeTypeContainer}>
-            <TouchableOpacity
-              style={[
-                styles.tradeTypeButton,
-                tradeType === "buy" && styles.tradeTypeActive,
-              ]}
-              onPress={() => setTradeType("buy")}
-            >
-              <Text
-                style={[
-                  styles.tradeTypeText,
-                  tradeType === "buy" && styles.tradeTypeActiveText,
-                ]}
-              >
-                Buy
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.tradeTypeButton,
-                tradeType === "sell" && styles.tradeTypeActive,
-              ]}
-              onPress={() => setTradeType("sell")}
-            >
-              <Text
-                style={[
-                  styles.tradeTypeText,
-                  tradeType === "sell" && styles.tradeTypeActiveText,
-                ]}
-              >
-                Sell
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.inputLabel}>Amount (tCO2e)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter amount to trade"
-            value={amount}
-            onChangeText={setAmount}
-            keyboardType="numeric"
-            placeholderTextColor={theme.colors.textSecondary}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.searchRow}>
+          <Ionicons
+            name="search"
+            size={16}
+            color={theme.colors.textMuted}
+            style={{ marginRight: 8 }}
           />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="e.g. reforestation, VCS-REDD-2024…"
+            placeholderTextColor={theme.colors.textMuted}
+            value={symbolInput}
+            onChangeText={setSymbolInput}
+            autoCapitalize="none"
+          />
+          <TouchableOpacity
+            onPress={() => setSymbol(symbolInput.trim())}
+            style={styles.searchBtn}
+          >
+            <Text style={styles.searchBtnText}>Look up</Text>
+          </TouchableOpacity>
+        </View>
 
-          <View style={styles.summaryContainer}>
-            <Text style={styles.summaryLabel}>Estimated Total:</Text>
-            <Text style={styles.summaryValue}>${calculatedTotal()}</Text>
-          </View>
+        {symbol.trim() ? (
+          <>
+            <Card style={styles.tickerCard}>
+              <Text style={theme.typography.eyebrow}>{symbol}</Text>
+              <Text style={styles.tickerValue}>
+                {marketLoading && !ticker
+                  ? "…"
+                  : ticker
+                    ? formatCurrency(ticker.value, ticker.currency)
+                    : "No data yet"}
+              </Text>
+              {ticker && (
+                <View style={styles.tickerMetaRow}>
+                  <Text style={styles.tickerMeta}>
+                    24h high{" "}
+                    {ticker.high_24h ? formatCurrency(ticker.high_24h) : "—"}
+                  </Text>
+                  <Text style={styles.tickerMeta}>
+                    24h low{" "}
+                    {ticker.low_24h ? formatCurrency(ticker.low_24h) : "—"}
+                  </Text>
+                </View>
+              )}
+            </Card>
 
-          {isLoading ? (
-            <ActivityIndicator
-              size="large"
-              color={theme.colors.primary}
-              style={styles.loader}
-            />
-          ) : (
+            <View style={styles.bookRow}>
+              <Card style={styles.bookCol}>
+                <Text style={styles.bookTitle}>Order book</Text>
+                {!depth ||
+                (depth.bids.length === 0 && depth.asks.length === 0) ? (
+                  <Text style={styles.emptyText}>No open orders.</Text>
+                ) : (
+                  <>
+                    {depth.asks
+                      .slice(0, 4)
+                      .reverse()
+                      .map((a, i) => (
+                        <View key={`ask-${i}`} style={styles.bookRowLine}>
+                          <Text
+                            style={[
+                              styles.bookPrice,
+                              { color: theme.colors.loss },
+                            ]}
+                          >
+                            {formatCurrency(a.price)}
+                          </Text>
+                          <Text style={styles.bookQty}>
+                            {formatNumber(a.quantity, 0)}
+                          </Text>
+                        </View>
+                      ))}
+                    <View style={styles.bookDivider} />
+                    {depth.bids.slice(0, 4).map((b, i) => (
+                      <View key={`bid-${i}`} style={styles.bookRowLine}>
+                        <Text
+                          style={[
+                            styles.bookPrice,
+                            { color: theme.colors.gain },
+                          ]}
+                        >
+                          {formatCurrency(b.price)}
+                        </Text>
+                        <Text style={styles.bookQty}>
+                          {formatNumber(b.quantity, 0)}
+                        </Text>
+                      </View>
+                    ))}
+                  </>
+                )}
+              </Card>
+
+              <Card style={styles.bookCol}>
+                <Text style={styles.bookTitle}>Recent trades</Text>
+                {recentTrades.length === 0 ? (
+                  <Text style={styles.emptyText}>No recent prints.</Text>
+                ) : (
+                  <FlatList
+                    data={recentTrades}
+                    scrollEnabled={false}
+                    keyExtractor={(item) => String(item.id)}
+                    renderItem={({ item }) => (
+                      <View style={styles.bookRowLine}>
+                        <Text style={styles.bookPrice}>
+                          {formatCurrency(item.price)}
+                        </Text>
+                        <Text style={styles.bookQty}>
+                          {formatNumber(item.quantity, 0)}
+                        </Text>
+                      </View>
+                    )}
+                  />
+                )}
+              </Card>
+            </View>
+          </>
+        ) : (
+          <Card style={styles.hintCard}>
+            <Text style={theme.typography.body2}>
+              Search a credit type above to see live pricing and depth.
+            </Text>
+          </Card>
+        )}
+
+        <Text
+          style={[
+            theme.typography.h3,
+            { marginTop: theme.spacing.lg, marginBottom: theme.spacing.sm },
+          ]}
+        >
+          Order entry
+        </Text>
+
+        <View style={styles.sideToggle}>
+          {["buy", "sell"].map((s) => (
             <TouchableOpacity
-              style={styles.submitButton}
-              onPress={handleCreateTrade}
+              key={s}
+              onPress={() => setSide(s)}
+              style={[
+                styles.sideBtn,
+                side === s && {
+                  backgroundColor:
+                    s === "buy" ? theme.colors.gain : theme.colors.loss,
+                },
+              ]}
             >
               <Text
-                style={styles.submitButtonText}
-              >{`Confirm ${tradeType === "buy" ? "Buy" : "Sell"} Order`}</Text>
+                style={[styles.sideBtnText, side === s && { color: "#fff" }]}
+              >
+                {s.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <FlatList
+          horizontal
+          data={ORDER_TYPES}
+          keyExtractor={(t) => t}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 8, marginBottom: theme.spacing.md }}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              onPress={() => setOrderType(item)}
+              style={[
+                styles.typeChip,
+                orderType === item && styles.typeChipActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.typeChipText,
+                  orderType === item && styles.typeChipTextActive,
+                ]}
+              >
+                {humanize(item)}
+              </Text>
             </TouchableOpacity>
           )}
+        />
 
-          {error && <Text style={styles.errorText}>Error: {error}</Text>}
-        </View>
+        <Text style={theme.components.label}>Quantity (tCO₂e)</Text>
+        <TextInput
+          style={theme.components.input}
+          value={quantity}
+          onChangeText={setQuantity}
+          keyboardType="numeric"
+          placeholder="100"
+          placeholderTextColor={theme.colors.textMuted}
+        />
+
+        {orderType !== "market" && (
+          <>
+            <Text
+              style={[theme.components.label, { marginTop: theme.spacing.md }]}
+            >
+              Limit price (USD)
+            </Text>
+            <TextInput
+              style={theme.components.input}
+              value={price}
+              onChangeText={setPrice}
+              keyboardType="numeric"
+              placeholder="12.50"
+              placeholderTextColor={theme.colors.textMuted}
+            />
+          </>
+        )}
+
+        {formMessage && (
+          <Text
+            style={[
+              styles.formMessage,
+              formMessage.success && styles.formMessageSuccess,
+            ]}
+          >
+            {formMessage.success ? formMessage.text : formMessage}
+          </Text>
+        )}
+
+        <Button
+          title={`${side === "buy" ? "Buy" : "Sell"} ${symbol || "credits"}`}
+          onPress={handleSubmitOrder}
+          loading={submitting}
+          variant={side === "sell" ? "danger" : "primary"}
+          style={{ marginTop: theme.spacing.md }}
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );
 };
 
-// Use theme variables for styling
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
+  bookCol: { flex: 1 },
+  bookDivider: {
+    backgroundColor: theme.colors.divider,
+    height: 1,
+    marginVertical: 6,
   },
-  scrollContainer: {
-    flexGrow: 1,
+  bookPrice: {
+    color: theme.colors.text,
+    fontFamily: theme.fontFamily.mono,
+    fontSize: 12,
   },
-  innerContainer: {
-    padding: theme.spacing.lg,
+  bookQty: {
+    color: theme.colors.textMuted,
+    fontFamily: theme.fontFamily.mono,
+    fontSize: 12,
   },
-  title: {
-    ...theme.typography.h1,
-    textAlign: "center",
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.lg,
-  },
-  infoCard: {
-    ...theme.components.card,
-    marginBottom: theme.spacing.lg,
-    padding: theme.spacing.md,
-  },
-  infoTitle: {
-    ...theme.typography.h3,
-    marginBottom: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    paddingBottom: theme.spacing.sm,
-  },
-  infoRow: {
+  bookRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: theme.spacing.sm,
-  },
-  infoLabel: {
-    ...theme.typography.body1,
-    color: theme.colors.textSecondary,
-  },
-  infoValue: {
-    ...theme.typography.body1,
-    fontWeight: "500",
-    flexShrink: 1,
-    marginLeft: theme.spacing.sm,
-    textAlign: "right",
-  },
-  tradeTypeContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginBottom: theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    overflow: "hidden",
-  },
-  tradeTypeButton: {
-    flex: 1,
-    paddingVertical: theme.spacing.md,
-    alignItems: "center",
-  },
-  tradeTypeActive: {
-    backgroundColor: theme.colors.primary,
-  },
-  tradeTypeText: {
-    ...theme.typography.button,
-    color: theme.colors.primary,
-  },
-  tradeTypeActiveText: {
-    color: theme.colors.surface,
-  },
-  inputLabel: {
-    ...theme.typography.body1,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.xs,
-  },
-  input: {
-    ...theme.components.input,
+    gap: theme.spacing.sm,
     marginBottom: theme.spacing.md,
   },
-  summaryContainer: {
+  bookRowLine: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: theme.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.lg,
+    paddingVertical: 2,
   },
-  summaryLabel: {
-    ...theme.typography.body1,
-    color: theme.colors.textSecondary,
-  },
-  summaryValue: {
-    ...theme.typography.h3,
-    color: theme.colors.primary,
-  },
-  submitButton: {
-    ...theme.components.button,
-  },
-  submitButtonText: {
-    ...theme.components.buttonText,
-  },
-  loader: {
-    marginVertical: theme.spacing.md,
-  },
-  errorText: {
-    ...theme.typography.body1,
-    color: theme.colors.error,
+  bookTitle: { fontSize: 13, fontWeight: "700", marginBottom: 8 },
+  content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xxl },
+  emptyText: { color: theme.colors.textMuted, fontSize: 12 },
+  formMessage: {
+    backgroundColor: "#F6E7DE",
+    borderRadius: theme.radius.md,
+    color: theme.colors.loss,
+    fontSize: 13,
     marginTop: theme.spacing.md,
-    textAlign: "center",
+    padding: theme.spacing.sm,
   },
+  formMessageSuccess: { backgroundColor: "#E4F3EB", color: theme.colors.gain },
+  hintCard: { alignItems: "center", marginBottom: theme.spacing.md },
+  root: { backgroundColor: theme.colors.background, flex: 1 },
+  searchBtn: { paddingHorizontal: 10 },
+  searchBtnText: {
+    color: theme.colors.primary,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  searchInput: {
+    color: theme.colors.text,
+    flex: 1,
+    fontFamily: theme.fontFamily.mono,
+    fontSize: 13,
+  },
+  searchRow: {
+    alignItems: "center",
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    height: 46,
+    marginBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+  },
+  sideBtn: {
+    alignItems: "center",
+    borderRadius: theme.radius.sm,
+    flex: 1,
+    paddingVertical: 10,
+  },
+  sideBtnText: {
+    color: theme.colors.textSecondary,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  sideToggle: {
+    backgroundColor: theme.colors.surfaceMuted,
+    borderRadius: theme.radius.md,
+    flexDirection: "row",
+    marginBottom: theme.spacing.md,
+    padding: 4,
+  },
+  tickerCard: { marginBottom: theme.spacing.md },
+  tickerMeta: { color: theme.colors.textMuted, fontSize: 12 },
+  tickerMetaRow: { flexDirection: "row", gap: theme.spacing.lg, marginTop: 8 },
+  tickerValue: {
+    color: theme.colors.text,
+    fontFamily: theme.fontFamily.mono,
+    fontSize: 26,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+  typeChip: {
+    backgroundColor: theme.colors.surfaceMuted,
+    borderRadius: theme.radius.full,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  typeChipActive: { backgroundColor: theme.colors.primary },
+  typeChipText: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  typeChipTextActive: { color: theme.colors.primaryForeground },
 });
 
 export default TradingScreen;

@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: "{{ .Values.appName }}-database"
+  namespace: '{{ .Values.namespace | default "carbonxchange" }}'
+  labels:
+    app: "{{ .Values.appName }}-database"
+    component: database
+    tier: data
+    environment: "{{ .Values.environment }}"
+spec:
+  serviceName: "{{ .Values.appName }}-database"
+  replicas: { { .Values.database.replicas } }
+  selector:
+    matchLabels:
+      app: "{{ .Values.appName }}-database"
+      component: database
+  template:
+    metadata:
+      labels:
+        app: "{{ .Values.appName }}-database"
+        component: database
+        tier: data
+        environment: "{{ .Values.environment }}"
+    spec:
+      serviceAccountName: "{{ .Values.appName }}-backend-sa"
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: "{{ .Values.appName }}-database"
+          # The backend depends on psycopg2-binary (PostgreSQL) and
+          # code/backend/init.sql is written for PostgreSQL — it has no
+          # MySQL client library at all.
+          image: "{{ .Values.database.image.repository }}:{{ .Values.database.image.tag }}"
+          imagePullPolicy: "{{ .Values.database.image.pullPolicy }}"
+          ports:
+            - name: postgresql
+              containerPort: { { .Values.database.containerPort } }
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            limits:
+              cpu: "{{ .Values.database.resources.limits.cpu }}"
+              memory: "{{ .Values.database.resources.limits.memory }}"
+            requests:
+              cpu: "{{ .Values.database.resources.requests.cpu }}"
+              memory: "{{ .Values.database.resources.requests.memory }}"
+          env:
+            - name: POSTGRES_DB
+              value: "{{ .Values.database.name }}"
+            - name: POSTGRES_USER
+              value: "{{ .Values.database.user }}"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.appName }}-secrets"
+                  key: database-password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: "{{ .Values.appName }}-database-data"
+              mountPath: /var/lib/postgresql/data
+            - name: tmp
+              mountPath: /tmp
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      terminationGracePeriodSeconds: 60
+  volumeClaimTemplates:
+    - metadata:
+        name: "{{ .Values.appName }}-database-data"
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: "{{ .Values.database.storageClass }}"
+        resources:
+          requests:
+            storage: "{{ .Values.database.storage }}"

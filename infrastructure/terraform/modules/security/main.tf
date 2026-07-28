@@ -296,11 +296,11 @@ resource "aws_security_group" "app" {
 
   # Database access
   egress {
-    from_port       = 3306
-    to_port         = 3306
+    from_port       = 5432
+    to_port         = 5432
     protocol        = "tcp"
     security_groups = [aws_security_group.db.id]
-    description     = "MySQL to database"
+    description     = "PostgreSQL to database"
   }
 
   # Redis access
@@ -325,20 +325,20 @@ resource "aws_security_group" "db" {
   vpc_id      = var.vpc_id
 
   ingress {
-    from_port       = 3306
-    to_port         = 3306
+    from_port       = 5432
+    to_port         = 5432
     protocol        = "tcp"
     security_groups = [aws_security_group.app.id]
-    description     = "MySQL from application"
+    description     = "PostgreSQL from application"
   }
 
   # Backup and monitoring access
   ingress {
-    from_port       = 3306
-    to_port         = 3306
+    from_port       = 5432
+    to_port         = 5432
     protocol        = "tcp"
     security_groups = [aws_security_group.monitoring.id]
-    description     = "MySQL from monitoring"
+    description     = "PostgreSQL from monitoring"
   }
 
   tags = merge(var.common_tags, {

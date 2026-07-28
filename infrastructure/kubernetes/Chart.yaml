@@ -1,0 +1,15 @@
+apiVersion: v2
+name: carbonxchange
+description: >-
+  Helm chart for the CarbonXchange carbon credit trading platform
+  (backend, frontend, database, redis, and supporting resources).
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - carbonxchange
+  - carbon-credits
+  - fintech
+home: https://github.com/carbonxchange
+maintainers:
+  - name: CarbonXchange Platform Team

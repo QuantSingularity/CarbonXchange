@@ -1,36 +1,38 @@
+import React from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 import theme from "../styles/theme";
 
 const EmptyState = ({
   icon = "folder-open-outline",
-  title = "No Data",
-  message = "There are no items to display",
+  title = "Nothing here yet",
+  message = "There's nothing to show right now.",
+  action = null,
   style,
-}) => {
-  return (
-    <View style={[styles.container, style]}>
-      <Ionicons name={icon} size={64} color={theme.colors.textSecondary} />
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.message}>{message}</Text>
+}) => (
+  <View style={[styles.container, style]}>
+    <View style={styles.iconWrap}>
+      <Ionicons name={icon} size={28} color={theme.colors.primary} />
     </View>
-  );
-};
+    <Text style={styles.title}>{title}</Text>
+    <Text style={styles.message}>{message}</Text>
+    {action}
+  </View>
+);
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
+  container: { alignItems: "center", padding: theme.spacing.xl },
+  iconWrap: {
     alignItems: "center",
-    padding: 20,
+    backgroundColor: theme.colors.primaryMuted,
+    borderRadius: 28,
+    height: 56,
+    justifyContent: "center",
+    marginBottom: theme.spacing.md,
+    width: 56,
   },
-  title: { fontSize: 20, fontWeight: "bold", marginTop: 16, marginBottom: 8 },
-  message: {
-    fontSize: 14,
-    color: "#6C757D",
-    textAlign: "center",
-    maxWidth: "80%",
-  },
+  message: { ...theme.typography.body2, maxWidth: "85%", textAlign: "center" },
+  title: { ...theme.typography.h3, marginBottom: 4, textAlign: "center" },
 });
 
 export default EmptyState;

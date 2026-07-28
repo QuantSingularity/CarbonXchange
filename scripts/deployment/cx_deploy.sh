@@ -15,8 +15,6 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Script directory
@@ -27,8 +25,7 @@ PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 # Component directories
 BACKEND_DIR="$PROJECT_ROOT/code/backend"
 BLOCKCHAIN_DIR="$PROJECT_ROOT/code/blockchain"
-WEB_FRONTEND_DIR="$PROJECT_ROOT/code/web-frontend"
-MOBILE_FRONTEND_DIR="$PROJECT_ROOT/mobile-frontend"
+WEB_FRONTEND_DIR="$PROJECT_ROOT/web-frontend"
 INFRA_DIR="$PROJECT_ROOT/infrastructure"
 
 # Deployment directories
@@ -86,31 +83,30 @@ generate_config() {
 
     log "STEP" "Generating configuration for $env environment..."
 
-    if [ ! -d "$ENV_TEMPLATES_DIR" ]; then
-        log "ERROR" "Environment templates directory not found at $ENV_TEMPLATES_DIR"
-        return 1
-    fi
-
     # Create environment-specific config directory
     local config_dir="$DEPLOY_DIR/$env/config"
     mkdir -p "$config_dir"
 
-    # Check for envsubst
-    if ! command_exists envsubst; then
-        log "ERROR" "envsubst command not found. Please install gettext package."
-        return 1
+    if [ ! -d "$ENV_TEMPLATES_DIR" ]; then
+        log "WARNING" "Environment templates directory not found at $ENV_TEMPLATES_DIR. Skipping template generation (nothing to process)."
+    else
+        # Check for envsubst
+        if ! command_exists envsubst; then
+            log "ERROR" "envsubst command not found. Please install gettext package."
+            return 1
+        fi
+
+        # Process each template file
+        find "$ENV_TEMPLATES_DIR" -type f -name "*.template" | while read -r template; do
+            local filename
+            filename=$(basename "$template" .template)
+            log "INFO" "Processing template: $filename"
+
+            # Replace environment variables in template
+            envsubst < "$template" > "$config_dir/$filename"
+            log "INFO" "Generated $filename for $env environment"
+        done
     fi
-
-    # Process each template file
-    find "$ENV_TEMPLATES_DIR" -type f -name "*.template" | while read -r template; do
-        local filename
-        filename=$(basename "$template" .template)
-        log "INFO" "Processing template: $filename"
-
-        # Replace environment variables in template
-        envsubst < "$template" > "$config_dir/$filename"
-        log "INFO" "Generated $filename for $env environment"
-    done
 
     # Generate .env file for backend
     local env_file="$ENV_TEMPLATES_DIR/.env.$env"
@@ -365,9 +361,9 @@ perform_rollback() {
 
     log "STEP" "Performing rollback for $env environment..."
 
-    # Find the latest backup
+    # Find the latest backup (sorted by mtime, robust to unusual filenames)
     local latest_backup
-    latest_backup=$(ls -t "$BACKUP_DIR/$env"-*.tar.gz 2>/dev/null | head -n 1)
+    latest_backup=$(find "$BACKUP_DIR" -maxdepth 1 -name "$env-*.tar.gz" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -n 1 | cut -d' ' -f2-)
 
     if [ -z "$latest_backup" ]; then
         log "ERROR" "No backup found for $env environment. Cannot perform rollback."
@@ -376,16 +372,30 @@ perform_rollback() {
 
     log "INFO" "Found latest backup: $(basename "$latest_backup")"
 
-    # Extract the backup
+    # Extract the backup into a staging directory first, so we never touch
+    # the live "current" deployment until we know the restore succeeded.
+    local restore_staging_dir
+    restore_staging_dir="$DEPLOY_DIR/$env/.rollback_staging_$(date +%Y%m%d%H%M%S)"
+    mkdir -p "$restore_staging_dir"
     log "INFO" "Extracting backup..."
-    tar -xzf "$latest_backup" -C "$DEPLOY_DIR/$env"
+    tar -xzf "$latest_backup" -C "$restore_staging_dir"
 
-    # Atomic switch (simulated)
+    # The archive contains a top-level "current" directory (see create_backup,
+    # which archives "current" relative to $DEPLOY_DIR/$env).
+    if [ ! -d "$restore_staging_dir/current" ]; then
+        log "ERROR" "Backup archive did not contain the expected 'current' directory."
+        rm -rf "$restore_staging_dir"
+        return 1
+    fi
+
     log "STEP" "Performing atomic switch to rolled-back deployment..."
-    # In a real scenario, this would be a symlink switch or load balancer update
-    rm -rf "$DEPLOY_DIR/$env/current" # Remove failed "current" link/dir
-    mv "$DEPLOY_DIR/$env/current" "$DEPLOY_DIR/$env/current_failed_$(date +%Y%m%d%H%M%S)" # Rename failed deployment
-    mv "$DEPLOY_DIR/$env/current_backup" "$DEPLOY_DIR/$env/current" # Make backup the "current" one
+    # Archive the failed "current" deployment for debugging rather than
+    # deleting it outright, then move the restored version into its place.
+    if [ -d "$DEPLOY_DIR/$env/current" ]; then
+        mv "$DEPLOY_DIR/$env/current" "$DEPLOY_DIR/$env/current_failed_$(date +%Y%m%d%H%M%S)"
+    fi
+    mv "$restore_staging_dir/current" "$DEPLOY_DIR/$env/current"
+    rm -rf "$restore_staging_dir"
 
     log "INFO" "Rollback to $(basename "$latest_backup") completed successfully."
     return 0
@@ -408,7 +418,7 @@ usage() {
 }
 
 # Main script logic
-if [ $# -lt 2 ] && [ "$1" != "--help" ]; then
+if [ $# -lt 2 ] && [ "${1:-}" != "--help" ]; then
     usage
     exit 1
 fi

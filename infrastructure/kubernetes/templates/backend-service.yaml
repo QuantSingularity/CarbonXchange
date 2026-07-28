@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Values.appName }}-backend"
+  namespace: '{{ .Values.namespace | default "carbonxchange" }}'
+  labels:
+    app: "{{ .Values.appName }}-backend"
+    component: backend
+    environment: "{{ .Values.environment }}"
+spec:
+  type: ClusterIP
+  ports:
+    - port: { { .Values.backend.servicePort } }
+      targetPort: { { .Values.backend.containerPort } }
+      protocol: TCP
+      name: http
+  selector:
+    app: "{{ .Values.appName }}-backend"
+    component: backend

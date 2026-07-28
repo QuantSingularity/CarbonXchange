@@ -398,7 +398,7 @@ code/backend/
 │   Developer Machine                      │
 │  ┌───────────────────────────────────┐  │
 │  │ Flask Dev Server (port 5000)      │  │
-│  │ React Dev Server (port 3000)      │  │
+│  │ Vite Dev Server (port 5173)       │  │
 │  │ PostgreSQL (local/Docker)         │  │
 │  │ Redis (local/Docker)              │  │
 │  └───────────────────────────────────┘  │

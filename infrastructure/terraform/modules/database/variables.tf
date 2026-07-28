@@ -30,14 +30,14 @@ variable "security_group_ids" {
 variable "port" {
   description = "Port on which the database accepts connections"
   type        = number
-  default     = 3306
+  default     = 5432
 }
 
 # Database Engine Configuration
 variable "engine" {
   description = "Database engine"
   type        = string
-  default     = "mysql"
+  default     = "postgres"
   validation {
     condition     = contains(["mysql", "postgres", "mariadb"], var.engine)
     error_message = "Engine must be one of: mysql, postgres, mariadb."
@@ -47,19 +47,19 @@ variable "engine" {
 variable "engine_version" {
   description = "Database engine version"
   type        = string
-  default     = "8.0.35"
+  default     = "15.4"
 }
 
 variable "major_engine_version" {
   description = "Major version of the database engine"
   type        = string
-  default     = "8.0"
+  default     = "15"
 }
 
 variable "parameter_group_family" {
   description = "Database parameter group family"
   type        = string
-  default     = "mysql8.0"
+  default     = "postgres15"
 }
 
 # Instance Configuration
@@ -242,7 +242,7 @@ variable "performance_insights_retention_period" {
 variable "enabled_cloudwatch_logs_exports" {
   description = "List of log types to export to CloudWatch"
   type        = list(string)
-  default     = ["error", "general", "slow-query", "audit"]
+  default     = ["postgresql", "upgrade"]
 }
 
 variable "log_retention_days" {
@@ -425,7 +425,7 @@ variable "create_db_proxy" {
 variable "proxy_engine_family" {
   description = "Engine family for RDS Proxy"
   type        = string
-  default     = "MYSQL"
+  default     = "POSTGRESQL"
 }
 
 variable "proxy_idle_client_timeout" {

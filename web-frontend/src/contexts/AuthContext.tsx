@@ -1,118 +1,103 @@
-import type React from "react";
 import {
   createContext,
-  type ReactNode,
-  useCallback,
   useContext,
   useEffect,
   useState,
+  type ReactNode,
 } from "react";
 import {
-  login as apiLogin,
-  logout as apiLogout,
-  register as apiRegister,
-  getCurrentUser,
-} from "../services/api";
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-}
+  authApi,
+  tokenStorage,
+  apiErrorMessage,
+  type User,
+  type RegisterPayload,
+} from "@/services/api";
 
 interface AuthContextType {
   user: User | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
-  logout: () => Promise<void>;
   isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<User>;
+  register: (payload: RegisterPayload) => Promise<User>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
-
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const loadUser = useCallback(async () => {
-    try {
-      const response = await getCurrentUser();
-      setUser(response.data || response);
-    } catch (error) {
-      console.error("Failed to load user:", error);
-      localStorage.removeItem("access_token");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      loadUser();
-    } else {
-      setLoading(false);
-    }
-  }, [loadUser]);
+    const bootstrap = async () => {
+      const token = tokenStorage.getAccess();
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const me = await authApi.me();
+        setUser(me);
+      } catch {
+        tokenStorage.clear();
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    bootstrap();
+  }, []);
 
   const login = async (email: string, password: string) => {
-    try {
-      const response = await apiLogin(email, password);
-      if (response.user) {
-        setUser(response.user);
-      } else {
-        // If backend doesn't return user, fetch it
-        await loadUser();
-      }
-    } catch (error) {
-      console.error("Login failed:", error);
-      throw error;
-    }
+    const { user: loggedInUser } = await authApi.login(email, password);
+    setUser(loggedInUser);
+    return loggedInUser;
   };
 
-  const register = async (email: string, password: string, name: string) => {
-    try {
-      await apiRegister({ email, password, name });
-      // After registration, log in automatically
-      await login(email, password);
-    } catch (error) {
-      console.error("Registration failed:", error);
-      throw error;
-    }
+  const register = async (payload: RegisterPayload) => {
+    const { user: newUser } = await authApi.register(payload);
+    setUser(newUser);
+    return newUser;
   };
 
   const logout = async () => {
     try {
-      await apiLogout();
-    } catch (error) {
-      console.error("Logout failed:", error);
+      await authApi.logout();
     } finally {
       setUser(null);
-      localStorage.removeItem("access_token");
     }
   };
 
-  const value = {
-    user,
-    loading,
-    login,
-    register,
-    logout,
-    isAuthenticated: !!user,
+  const refreshUser = async () => {
+    try {
+      const me = await authApi.me();
+      setUser(me);
+    } catch (error) {
+      // Non-fatal — surfaced by whichever call site initiated the refresh.
+      console.error(apiErrorMessage(error));
+    }
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        login,
+        register,
+        logout,
+        refreshUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
+  return ctx;
+}

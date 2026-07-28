@@ -16,8 +16,6 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Script directory
@@ -28,7 +26,7 @@ PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 # Component directories
 BACKEND_DIR="$PROJECT_ROOT/code/backend"
 BLOCKCHAIN_DIR="$PROJECT_ROOT/code/blockchain"
-WEB_FRONTEND_DIR="$PROJECT_ROOT/code/web-frontend"
+WEB_FRONTEND_DIR="$PROJECT_ROOT/web-frontend"
 MOBILE_FRONTEND_DIR="$PROJECT_ROOT/mobile-frontend"
 
 # Log directory
@@ -41,9 +39,11 @@ mkdir -p "$PID_DIR"
 
 # Service ports
 BACKEND_PORT=5000
-WEB_FRONTEND_PORT=3000
+# Vite's dev server default (this project uses Vite, not create-react-app)
+WEB_FRONTEND_PORT=5173
 BLOCKCHAIN_PORT=8545
-MOBILE_FRONTEND_PORT=19000
+# Metro bundler default used by Expo SDK 46+ (this project is on SDK 52)
+MOBILE_FRONTEND_PORT=8081
 
 # Function to log messages
 log() {
@@ -118,10 +118,10 @@ start_backend() {
         source "$PROJECT_ROOT/venv/bin/activate"
         set -u
         log "INFO" "Starting backend server on port $BACKEND_PORT..."
-        # Use gunicorn or a more robust server for production, but sticking to python app.py for dev
-        # Redirecting output to log file
+        # Use gunicorn or a more robust server for production, but sticking to the
+        # Flask dev server (src/main.py's __main__ block) for local development.
         cd "$BACKEND_DIR"
-        python app.py > "$LOG_DIR/backend.log" 2>&1 &
+        python src/main.py > "$LOG_DIR/backend.log" 2>&1 &
         echo $! > "$PID_DIR/backend.pid"
     )
 
@@ -157,7 +157,7 @@ start_backend() {
     done
 }
 
-# Function to start blockchain service (assuming hardhat node)
+# Function to start blockchain service (Truffle project, using Ganache as the local chain)
 start_blockchain() {
     log "STEP" "Starting blockchain service..."
 
@@ -179,8 +179,10 @@ start_blockchain() {
     log "INFO" "Starting local blockchain on port $BLOCKCHAIN_PORT..."
     (
         cd "$BLOCKCHAIN_DIR"
-        # Using npx to ensure the local hardhat is used
-        npx hardhat node > "$LOG_DIR/blockchain.log" 2>&1 &
+        # This project is Truffle-based (see truffle-config.js) with no local
+        # package.json/Hardhat setup, so Ganache is the local chain that
+        # truffle-config.js's "development" network (127.0.0.1:8545) expects.
+        npx ganache --port "$BLOCKCHAIN_PORT" > "$LOG_DIR/blockchain.log" 2>&1 &
         echo $! > "$PID_DIR/blockchain.pid"
     )
 
@@ -238,8 +240,8 @@ start_web_frontend() {
     log "INFO" "Starting web frontend on port $WEB_FRONTEND_PORT..."
     (
         cd "$WEB_FRONTEND_DIR"
-        # Assuming 'npm start' runs the dev server (e.g., Vite/Webpack dev server)
-        npm start > "$LOG_DIR/web_frontend.log" 2>&1 &
+        # This is a Vite project — the dev script is "dev", not "start".
+        npm run dev -- --port "$WEB_FRONTEND_PORT" --strictPort > "$LOG_DIR/web_frontend.log" 2>&1 &
         echo $! > "$PID_DIR/web_frontend.pid"
     )
 
@@ -297,8 +299,9 @@ start_mobile_frontend() {
     log "INFO" "Starting mobile frontend on port $MOBILE_FRONTEND_PORT..."
     (
         cd "$MOBILE_FRONTEND_DIR"
-        # Assuming 'expo start' runs the dev server
-        expo start > "$LOG_DIR/mobile_frontend.log" 2>&1 &
+        # Use the project's local "expo" package via npx rather than a global
+        # expo-cli binary, which is deprecated and no longer maintained.
+        npx expo start --port "$MOBILE_FRONTEND_PORT" > "$LOG_DIR/mobile_frontend.log" 2>&1 &
         echo $! > "$PID_DIR/mobile_frontend.pid"
     )
 
@@ -493,10 +496,13 @@ case "$COMMAND" in
         ;;
     "status")
         log "STEP" "Checking service status..."
-        is_service_running "backend" && log "INFO" "Backend: RUNNING (PID: $(cat "$PID_DIR/backend.pid"))" || log "WARNING" "Backend: STOPPED"
-        is_service_running "blockchain" && log "INFO" "Blockchain: RUNNING (PID: $(cat "$PID_DIR/blockchain.pid"))" || log "WARNING" "Blockchain: STOPPED"
-        is_service_running "web_frontend" && log "INFO" "Web Frontend: RUNNING (PID: $(cat "$PID_DIR/web_frontend.pid"))" || log "WARNING" "Web Frontend: STOPPED"
-        is_service_running "mobile_frontend" && log "INFO" "Mobile Frontend: RUNNING (PID: $(cat "$PID_DIR/mobile_frontend.pid"))" || log "WARNING" "Mobile Frontend: STOPPED"
+        for svc_name in backend blockchain web_frontend mobile_frontend; do
+            if is_service_running "$svc_name"; then
+                log "INFO" "$svc_name: RUNNING (PID: $(cat "$PID_DIR/$svc_name.pid"))"
+            else
+                log "WARNING" "$svc_name: STOPPED"
+            fi
+        done
         ;;
     "logs")
         if [ -z "$SERVICE" ]; then

@@ -4,29 +4,28 @@
 extends: default
 
 rules:
-    line-length:
-        max: 120
-        level: warning
-    indentation:
-        spaces: 4
-        indent-sequences: true
-    document-start:
-        present: true
-    braces:
-        min-spaces-inside: 0
-        max-spaces-inside: 1
-    brackets:
-        min-spaces-inside: 0
-        max-spaces-inside: 0
-    comments:
-        min-spaces-from-content: 1
-    truthy:
-        allowed-values: ['true', 'false']
-        check-keys: true
+  line-length:
+    max: 120
+    level: warning
+  indentation:
+    spaces: 2
+    indent-sequences: true
+  document-start: disable
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 0
+  comments:
+    min-spaces-from-content: 1
+  truthy:
+    allowed-values: ['true', 'false']
+    check-keys: true
 
 ignore: |
-    *.terraform/
-    .git/
-    */node_modules/
-    */dist/
-    */build/
+  *.terraform/
+  .git/
+  */node_modules/
+  */dist/
+  */build/

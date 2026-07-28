@@ -1,0 +1,32 @@
+# PostgreSQL configuration - managed by Ansible
+# The backend depends on psycopg2-binary (PostgreSQL) — see
+# code/backend/requirements.txt — and code/backend/init.sql is written for
+# PostgreSQL, so this role provisions PostgreSQL, not MariaDB/MySQL.
+
+# Connections
+listen_addresses = '*'
+max_connections = {{ database_max_connections }}
+
+# Memory
+shared_buffers = {{ database_shared_buffers }}
+effective_cache_size = {{ database_effective_cache_size }}
+work_mem = {{ database_work_mem }}
+
+# Write-ahead log
+wal_level = replica
+max_wal_size = 1GB
+min_wal_size = 80MB
+
+# Logging (required for financial compliance)
+logging_collector = on
+log_directory = 'log'
+log_filename = 'postgresql-%Y-%m-%d.log'
+log_statement = 'mod'
+log_min_duration_statement = 2000
+log_line_prefix = '%m [%p] %q%u@%d '
+log_connections = on
+log_disconnections = on
+
+# Security hardening
+ssl = {{ database_ssl_enabled | default('on') }}
+password_encryption = scram-sha-256

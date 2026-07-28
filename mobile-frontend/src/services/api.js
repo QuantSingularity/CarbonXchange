@@ -1,225 +1,345 @@
 import axios from "axios";
-import * as SecureStore from "expo-secure-store"; // For storing JWT token securely
+import * as SecureStore from "expo-secure-store";
 import { API_CONFIG } from "../config/constants";
 
-// Define the base URL for the API from config
-const API_BASE_URL = API_CONFIG.baseURL;
+/**
+ * API client for the CarbonXchange Flask backend. Mirrors the web
+ * frontend's services/api.ts function-for-function so both apps talk to
+ * the exact same routes and expect the exact same response shapes.
+ */
 
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
+const ACCESS_TOKEN_KEY = "cx_access_token";
+const REFRESH_TOKEN_KEY = "cx_refresh_token";
+
+export const tokenStorage = {
+  async getAccess() {
+    return SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
   },
+  async getRefresh() {
+    return SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+  },
+  async set(access, refresh) {
+    if (access) await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, access);
+    if (refresh) await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refresh);
+  },
+  async clear() {
+    await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
+    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+  },
+};
+
+export const apiClient = axios.create({
+  baseURL: API_CONFIG.baseURL,
+  timeout: API_CONFIG.timeout,
+  headers: { "Content-Type": "application/json" },
 });
 
-// Interceptor to add JWT token to requests
-apiClient.interceptors.request.use(
-  async (config) => {
-    const token = await SecureStore.getItemAsync("userToken");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+apiClient.interceptors.request.use(async (config) => {
+  const token = await tokenStorage.getAccess();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (API_CONFIG.logRequests) {
+    console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
+  }
+  return config;
+});
 
-    // Log requests if enabled
-    if (API_CONFIG.logRequests) {
-      console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, {
-        params: config.params,
-        data: config.data,
-      });
-    }
+let isRefreshing = false;
+let pendingQueue = [];
+let onSessionExpired = null;
 
-    return config;
-  },
-  (error) => {
-    if (API_CONFIG.logRequests) {
-      console.error("[API] Request error:", error);
-    }
-    return Promise.reject(error);
-  },
-);
+/** Registered by the auth store so a failed refresh can force a sign-out. */
+export function setSessionExpiredHandler(handler) {
+  onSessionExpired = handler;
+}
 
-// Response interceptor for consistent error handling
 apiClient.interceptors.response.use(
-  (response) => {
-    if (API_CONFIG.logRequests) {
-      console.log(`[API] Response from ${response.config.url}:`, response.data);
-    }
-    return response;
-  },
+  (response) => response,
   async (error) => {
-    if (API_CONFIG.logRequests) {
-      console.error(
-        "[API] Response error:",
-        error.response?.data || error.message,
-      );
-    }
+    const original = error.config;
+    const url = original?.url || "";
+    const isAuthRoute =
+      url.includes("/auth/login") ||
+      url.includes("/auth/register") ||
+      url.includes("/auth/refresh");
 
-    // Handle 401 Unauthorized - token expired or invalid
-    if (error.response?.status === 401) {
-      // Clear token and redirect to login (handled by App.js)
-      await SecureStore.deleteItemAsync("userToken");
+    if (error.response?.status === 401 && !original?._retry && !isAuthRoute) {
+      const refreshToken = await tokenStorage.getRefresh();
+      if (!refreshToken) {
+        await tokenStorage.clear();
+        onSessionExpired?.();
+        return Promise.reject(error);
+      }
+
+      original._retry = true;
+
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          pendingQueue.push(() => resolve(apiClient(original)));
+        });
+      }
+
+      isRefreshing = true;
+      try {
+        const { data } = await axios.post(
+          `${API_CONFIG.baseURL}/auth/refresh`,
+          null,
+          { headers: { Authorization: `Bearer ${refreshToken}` } },
+        );
+        await tokenStorage.set(data.access_token);
+        pendingQueue.forEach((cb) => cb());
+        pendingQueue = [];
+        return apiClient(original);
+      } catch (refreshError) {
+        await tokenStorage.clear();
+        pendingQueue = [];
+        onSessionExpired?.();
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
     }
 
     return Promise.reject(error);
   },
 );
 
-// Function to save token
-const saveToken = async (token) => {
-  try {
-    await SecureStore.setItemAsync("userToken", token);
-  } catch (error) {
-    console.error("Error saving token:", error);
+export function apiErrorMessage(
+  error,
+  fallback = "Something went wrong. Please try again.",
+) {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data;
+    return data?.message || data?.error || error.message || fallback;
   }
-};
+  if (error instanceof Error) return error.message;
+  return fallback;
+}
 
-// Function to remove token
-const removeToken = async () => {
-  try {
-    await SecureStore.deleteItemAsync("userToken");
-  } catch (error) {
-    console.error("Error removing token:", error);
-  }
-};
+/* ------------------------------------------------------------------ */
+/* Auth                                                                 */
+/* ------------------------------------------------------------------ */
 
-// Authentication API calls
-export const login = async (email, password) => {
-  try {
-    const response = await apiClient.post("/auth/login", { email, password });
-    if (response.data.success && response.data.token) {
-      await saveToken(response.data.token);
+export const authApi = {
+  async register(payload) {
+    const { data } = await apiClient.post("/auth/register", payload);
+    await tokenStorage.set(data.access_token, data.refresh_token);
+    return data;
+  },
+  async login(email, password) {
+    const { data } = await apiClient.post("/auth/login", { email, password });
+    await tokenStorage.set(data.access_token, data.refresh_token);
+    return data;
+  },
+  async logout() {
+    try {
+      await apiClient.post("/auth/logout");
+    } finally {
+      await tokenStorage.clear();
     }
-    return response.data;
-  } catch (error) {
-    console.error("Login API error:", error.response?.data || error.message);
-    throw error;
-  }
+  },
+  async me() {
+    const { data } = await apiClient.get("/auth/me");
+    return data.user;
+  },
+  async changePassword(current_password, new_password) {
+    const { data } = await apiClient.post("/auth/change-password", {
+      current_password,
+      new_password,
+    });
+    return data;
+  },
+  async verifyEmail() {
+    const { data } = await apiClient.post("/auth/verify-email");
+    return data;
+  },
 };
 
-export const register = async (userData) => {
-  try {
-    const response = await apiClient.post("/auth/register", userData);
-    if (response.data.success && response.data.token) {
-      await saveToken(response.data.token);
-    }
-    return response.data;
-  } catch (error) {
-    console.error("Register API error:", error.response?.data || error.message);
-    throw error;
-  }
+/* ------------------------------------------------------------------ */
+/* Users                                                                */
+/* ------------------------------------------------------------------ */
+
+export const userApi = {
+  async updateMyProfile(payload) {
+    const { data } = await apiClient.put("/users/me/profile", payload);
+    return data.user;
+  },
 };
 
-export const logoutUser = async () => {
-  await removeToken();
-  // Optionally: Call a backend logout endpoint if it exists
+/* ------------------------------------------------------------------ */
+/* Carbon credits & projects                                           */
+/* ------------------------------------------------------------------ */
+
+export const creditsApi = {
+  async list(params = {}) {
+    const { data } = await apiClient.get("/carbon-credits/", { params });
+    return data;
+  },
+  async get(id) {
+    const { data } = await apiClient.get(`/carbon-credits/${id}`);
+    return data;
+  },
+  async retire(id) {
+    const { data } = await apiClient.post(`/carbon-credits/${id}/retire`);
+    return data;
+  },
+  async blockchainStatus() {
+    const { data } = await apiClient.get("/carbon-credits/blockchain/status");
+    return data;
+  },
 };
 
-// Carbon Credits API calls
-export const getCredits = async (params = {}) => {
-  try {
-    const response = await apiClient.get("/credits", { params });
-    return response.data;
-  } catch (error) {
-    console.error(
-      "Get Credits API error:",
-      error.response?.data || error.message,
+export const projectsApi = {
+  async list(params = {}) {
+    const { data } = await apiClient.get("/carbon-credits/projects", {
+      params,
+    });
+    return data;
+  },
+  async get(id) {
+    const { data } = await apiClient.get(`/carbon-credits/projects/${id}`);
+    return data;
+  },
+  async credits(id) {
+    const { data } = await apiClient.get(
+      `/carbon-credits/projects/${id}/credits`,
     );
-    throw error;
-  }
+    return data;
+  },
 };
 
-export const createCredit = async (creditData) => {
-  try {
-    const response = await apiClient.post("/credits", creditData);
-    return response.data;
-  } catch (error) {
-    console.error(
-      "Create Credit API error:",
-      error.response?.data || error.message,
-    );
-    throw error;
-  }
+/* ------------------------------------------------------------------ */
+/* Trading                                                              */
+/* ------------------------------------------------------------------ */
+
+export const tradingApi = {
+  async createOrder(payload) {
+    const { data } = await apiClient.post("/trading/orders", payload);
+    return data;
+  },
+  async listOrders(params = {}) {
+    const { data } = await apiClient.get("/trading/orders", { params });
+    return data;
+  },
+  async getOrder(orderId) {
+    const { data } = await apiClient.get(`/trading/orders/${orderId}`);
+    return data;
+  },
+  async cancelOrder(orderId) {
+    const { data } = await apiClient.post(`/trading/orders/${orderId}/cancel`);
+    return data;
+  },
+  async listTrades(params = {}) {
+    const { data } = await apiClient.get("/trading/trades", { params });
+    return data;
+  },
+  async portfolios() {
+    const { data } = await apiClient.get("/trading/portfolio");
+    return data;
+  },
+  async holdings() {
+    const { data } = await apiClient.get("/trading/portfolio/holdings");
+    return data;
+  },
 };
 
-// Trading API calls
-export const createTrade = async (tradeData) => {
-  try {
-    const response = await apiClient.post("/trades", tradeData);
-    return response.data;
-  } catch (error) {
-    console.error(
-      "Create Trade API error:",
-      error.response?.data || error.message,
-    );
-    throw error;
-  }
+/* ------------------------------------------------------------------ */
+/* Market data                                                         */
+/* ------------------------------------------------------------------ */
+
+export const marketApi = {
+  async data(params = {}) {
+    const { data } = await apiClient.get("/market/data", { params });
+    return data;
+  },
+  async ticker(symbol) {
+    const { data } = await apiClient.get(`/market/ticker/${symbol}`);
+    return data.ticker;
+  },
+  async prices(params = {}) {
+    const { data } = await apiClient.get("/market/prices", { params });
+    return data;
+  },
+  async ohlcv(symbol, params = {}) {
+    const { data } = await apiClient.get(`/market/prices/${symbol}/ohlcv`, {
+      params,
+    });
+    return data;
+  },
+  async summary() {
+    const { data } = await apiClient.get("/market/summary");
+    return data;
+  },
+  async statistics(params = {}) {
+    const { data } = await apiClient.get("/market/statistics", { params });
+    return data;
+  },
+  async depth(symbol, levels = 10) {
+    const { data } = await apiClient.get(`/market/depth/${symbol}`, {
+      params: { levels },
+    });
+    return data;
+  },
+  async recentTrades(params = {}) {
+    const { data } = await apiClient.get("/market/trades/recent", { params });
+    return data;
+  },
 };
 
-export const getUserTrades = async (params = {}) => {
-  try {
-    const response = await apiClient.get("/trades/user", { params });
-    return response.data;
-  } catch (error) {
-    console.error(
-      "Get User Trades API error:",
-      error.response?.data || error.message,
-    );
-    throw error;
-  }
+/* ------------------------------------------------------------------ */
+/* Compliance                                                          */
+/* ------------------------------------------------------------------ */
+
+export const complianceApi = {
+  async myStatus() {
+    const { data } = await apiClient.get("/compliance/status");
+    return data;
+  },
+  async records(params = {}) {
+    const { data } = await apiClient.get("/compliance/records", { params });
+    return data;
+  },
+  async reports(params = {}) {
+    const { data } = await apiClient.get("/compliance/reports", { params });
+    return data;
+  },
+  async submitReport(id) {
+    const { data } = await apiClient.post(`/compliance/reports/${id}/submit`);
+    return data;
+  },
+  async approveReport(id) {
+    const { data } = await apiClient.post(`/compliance/reports/${id}/approve`);
+    return data;
+  },
+  async amlSummary() {
+    const { data } = await apiClient.get("/compliance/aml/summary");
+    return data;
+  },
 };
 
-// Market Data API calls
-export const getMarketStats = async () => {
-  try {
-    const response = await apiClient.get("/market/statistics");
-    return response.data;
-  } catch (error) {
-    console.error(
-      "Get Market Stats API error:",
-      error.response?.data || error.message,
-    );
-    throw error;
-  }
+/* ------------------------------------------------------------------ */
+/* Admin                                                                */
+/* ------------------------------------------------------------------ */
+
+export const adminApi = {
+  async users(params = {}) {
+    const { data } = await apiClient.get("/admin/users", { params });
+    return data;
+  },
+  async updateUserStatus(userId, status, reason) {
+    const { data } = await apiClient.put(`/admin/users/${userId}/status`, {
+      status,
+      reason,
+    });
+    return data;
+  },
+  async unlockUser(userId) {
+    const { data } = await apiClient.post(`/admin/users/${userId}/unlock`);
+    return data;
+  },
+  async system() {
+    const { data } = await apiClient.get("/admin/system");
+    return data;
+  },
 };
 
-export const getMarketForecast = async (params = {}) => {
-  try {
-    const response = await apiClient.get("/market/forecast", { params });
-    return response.data;
-  } catch (error) {
-    console.error(
-      "Get Market Forecast API error:",
-      error.response?.data || error.message,
-    );
-    throw error;
-  }
-};
-
-// Wallet API calls
-export const getWalletBalance = async () => {
-  try {
-    const response = await apiClient.get("/wallet/balance");
-    return response.data;
-  } catch (error) {
-    console.error(
-      "Get Wallet Balance API error:",
-      error.response?.data || error.message,
-    );
-    throw error;
-  }
-};
-
-// Add other API functions as needed based on api-reference.md
-
-export const getCreditById = async (creditId) => {
-  try {
-    const response = await apiClient.get(`/credits/${creditId}`);
-    return response.data;
-  } catch (error) {
-    console.error(
-      "Get Credit By ID API error:",
-      error.response?.data || error.message,
-    );
-    throw error;
-  }
-};
+export default apiClient;

@@ -41,17 +41,14 @@ command_exists() {
 
 # Define directories to process (relative to PROJECT_ROOT)
 PYTHON_DIRECTORIES=(
-  "code/backend/api"
-  "code/backend/core"
-  "code/backend/ml"
-  "code/backend/services"
-  "code/backend/utils"
+  "code/backend/src"
   "code/backend/tests"
+  "code/ai_models"
 )
 
-JS_DIRECTORIES=(
-  "code/web-frontend/src"
-  "mobile-frontend/src"
+JS_PROJECT_DIRECTORIES=(
+  "web-frontend"
+  "mobile-frontend"
 )
 
 SOLIDITY_DIRECTORIES=(
@@ -111,8 +108,8 @@ fi
 # 1.4 Run pylint (more comprehensive linter)
 if command_exists pylint; then
     log "INFO" "Running pylint for more comprehensive linting..."
-    # Using find and xargs for better handling of many files
-    find "${PYTHON_DIRECTORIES[@]}" -type f -name "*.py" | xargs pylint --rcfile=.pylintrc || log "WARNING" "Pylint found issues. Review output."
+    # Using find and xargs (NUL-delimited) for safe handling of many files
+    find "${PYTHON_DIRECTORIES[@]}" -type f -name "*.py" -print0 | xargs -0 --no-run-if-empty pylint || log "WARNING" "Pylint found issues. Review output."
 else
     log "WARNING" "pylint not found. Skipping pylint linting."
 fi
@@ -125,21 +122,27 @@ fi
 # 2. JavaScript/TypeScript Linting
 log "STEP" "Running JavaScript/TypeScript linting tools..."
 
-# 2.1 Run Prettier (formatter)
-if command_exists prettier; then
-    log "INFO" "Running Prettier for JavaScript/TypeScript files..."
-    prettier --write "${JS_DIRECTORIES[@]}/**/*.{js,jsx,ts,tsx}" || log "WARNING" "Prettier encountered issues. Review output."
-else
-    log "WARNING" "prettier not found. Skipping JS/TS formatting."
-fi
+# Run each frontend's own local ESLint via npx rather than a single global
+# eslint binary. This matters here specifically: web-frontend uses ESLint's
+# modern flat config (eslint.config.js) while mobile-frontend uses the
+# legacy .eslintrc.js format, and a single globally-installed ESLint version
+# cannot correctly satisfy both config generations at once. Using npx also
+# ensures each project's own local plugins (declared in its own
+# package.json) resolve correctly.
+for js_dir in "${JS_PROJECT_DIRECTORIES[@]}"; do
+    js_dir_path="$PROJECT_ROOT/$js_dir"
+    if [ ! -d "$js_dir_path" ]; then
+        log "WARNING" "$js_dir not found. Skipping."
+        continue
+    fi
+    if [ ! -f "$js_dir_path/package.json" ]; then
+        log "WARNING" "$js_dir has no package.json. Skipping."
+        continue
+    fi
 
-# 2.2 Run ESLint (linter)
-if command_exists eslint; then
-    log "INFO" "Running ESLint for JavaScript/TypeScript files..."
-    eslint "${JS_DIRECTORIES[@]}" --ext .js,.jsx,.ts,.tsx --fix || log "WARNING" "ESLint found issues. Review output."
-else
-    log "WARNING" "eslint not found. Skipping JS/TS linting."
-fi
+    log "INFO" "Running ESLint for $js_dir..."
+    (cd "$js_dir_path" && npx --no-install eslint . --fix) || log "WARNING" "ESLint found issues in $js_dir. Review output."
+done
 
 # 3. Solidity Linting
 log "STEP" "Running Solidity linting tools..."
@@ -147,7 +150,11 @@ log "STEP" "Running Solidity linting tools..."
 # 3.1 Run Prettier on Solidity files
 if command_exists prettier; then
     log "INFO" "Running Prettier for Solidity files..."
-    prettier --write "${SOLIDITY_DIRECTORIES[@]}/**/*.sol" || log "WARNING" "Prettier encountered issues. Review output."
+    for sol_dir in "${SOLIDITY_DIRECTORIES[@]}"; do
+        if [ -d "$sol_dir" ]; then
+            prettier --write "$sol_dir/**/*.sol" || log "WARNING" "Prettier encountered issues in $sol_dir. Review output."
+        fi
+    done
 else
     log "WARNING" "prettier not found. Skipping Solidity formatting."
 fi
@@ -155,7 +162,11 @@ fi
 # 3.2 Run solhint
 if command_exists solhint; then
     log "INFO" "Running solhint for Solidity files..."
-    solhint "${SOLIDITY_DIRECTORIES[@]}/**/*.sol" || log "WARNING" "solhint found issues. Review output."
+    for sol_dir in "${SOLIDITY_DIRECTORIES[@]}"; do
+        if [ -d "$sol_dir" ]; then
+            solhint "$sol_dir/**/*.sol" || log "WARNING" "solhint found issues in $sol_dir. Review output."
+        fi
+    done
 else
     log "WARNING" "solhint not found. Skipping Solidity linting."
 fi
@@ -166,7 +177,7 @@ log "STEP" "Running YAML linting tools..."
 # 4.1 Run yamllint
 if command_exists yamllint; then
     log "INFO" "Running yamllint for YAML files..."
-    yamllint "${YAML_DIRECTORIES[@]}" || log "WARNING" "yamllint found issues. Review output."
+    yamllint -c "$PROJECT_ROOT/infrastructure/.yamllint" "${YAML_DIRECTORIES[@]}" || log "WARNING" "yamllint found issues. Review output."
 else
     log "WARNING" "yamllint not found. Skipping YAML linting."
 fi
@@ -195,6 +206,23 @@ if command_exists terraform; then
     log "INFO" "terraform validate completed."
 else
     log "WARNING" "terraform not found. Skipping Terraform linting."
+fi
+
+# 6. Ansible Linting
+log "STEP" "Running Ansible linting tools..."
+
+if command_exists ansible-lint; then
+    ansible_dir="$PROJECT_ROOT/infrastructure/ansible"
+    if [ ! -d "$ansible_dir" ]; then
+        log "WARNING" "$ansible_dir not found. Skipping."
+    elif [ ! -f "$ansible_dir/.vault_pass" ]; then
+        log "WARNING" "$ansible_dir/.vault_pass not found. Create it (see infrastructure/README.md) to enable Ansible linting. Skipping."
+    else
+        log "INFO" "Running ansible-lint for playbooks and roles..."
+        (cd "$ansible_dir" && ansible-lint playbooks/ roles/) || log "WARNING" "ansible-lint found issues. Review output."
+    fi
+else
+    log "WARNING" "ansible-lint not found. Skipping Ansible linting."
 fi
 
 log "STEP" "Linting and formatting process completed. Review warnings/errors above."

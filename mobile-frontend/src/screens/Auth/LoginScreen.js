@@ -1,9 +1,9 @@
 import React, { useState } from "react";
+import { useNavigation } from "@react-navigation/native";
 import {
-  ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -11,135 +11,119 @@ import {
   View,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
+import { Ionicons } from "@expo/vector-icons";
+import Button from "../../components/Button";
 import { loginUser, resetAuthError } from "../../store/slices/authSlice";
-import theme from "../../styles/theme"; // Import the theme
+import theme from "../../styles/theme";
 
-const LoginScreen = ({ navigation }) => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+const LoginScreen = () => {
+  const navigation = useNavigation();
   const dispatch = useDispatch();
   const { isLoading, error } = useSelector((state) => state.auth);
 
-  const handleLogin = () => {
-    if (error) {
-      dispatch(resetAuthError()); // Reset error before new attempt
-    }
-    if (!email || !password) {
-      Alert.alert("Error", "Please enter both email and password.");
-      return;
-    }
-    dispatch(loginUser({ email, password }));
-    // Navigation to AppNavigator will be handled in App.js based on isLoggedIn state
-  };
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  React.useEffect(() => {
-    if (error) {
-      // Use a more user-friendly error message if possible
-      const message =
-        error.message ||
-        error.response?.data?.message ||
-        "Login failed. Please check your credentials.";
-      Alert.alert("Login Failed", message);
-      dispatch(resetAuthError()); // Reset error after showing it
-    }
-  }, [error, dispatch]);
+  const handleSubmit = () => {
+    dispatch(resetAuthError());
+    dispatch(loginUser({ email: email.trim(), password }));
+  };
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
+      style={styles.root}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={styles.innerContainer}>
-        <Text style={styles.title}>Welcome Back!</Text>
-        <Text style={styles.subtitle}>Login to CarbonXchange</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          placeholderTextColor={theme.colors.textSecondary}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          placeholderTextColor={theme.colors.textSecondary}
-        />
-
-        {isLoading ? (
-          <ActivityIndicator
-            size="large"
-            color={theme.colors.primary}
-            style={{ marginVertical: theme.spacing.md }}
-          />
-        ) : (
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleLogin}
-            disabled={isLoading}
-          >
-            <Text style={styles.buttonText}>Login</Text>
-          </TouchableOpacity>
-        )}
-
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+      >
         <TouchableOpacity
-          style={[styles.button, styles.buttonSecondary]}
-          onPress={() => navigation.navigate("Register")}
-          disabled={isLoading}
+          onPress={() => navigation.goBack()}
+          style={styles.back}
         >
-          <Text style={styles.buttonSecondaryText}>
-            Don't have an account? Register
-          </Text>
+          <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-      </View>
+
+        <Text style={theme.typography.display2}>Welcome back</Text>
+        <Text style={[theme.typography.body2, styles.subtitle]}>
+          Sign in to trade, track holdings, and manage retirements.
+        </Text>
+
+        <View style={styles.field}>
+          <Text style={theme.components.label}>Email</Text>
+          <TextInput
+            style={theme.components.input}
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@company.com"
+            placeholderTextColor={theme.colors.textMuted}
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+          />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={theme.components.label}>Password</Text>
+          <TextInput
+            style={theme.components.input}
+            value={password}
+            onChangeText={setPassword}
+            placeholder="••••••••"
+            placeholderTextColor={theme.colors.textMuted}
+            secureTextEntry
+            autoCapitalize="none"
+          />
+        </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <Button
+          title="Sign in"
+          onPress={handleSubmit}
+          loading={isLoading}
+          style={styles.submit}
+        />
+
+        <View style={styles.footerRow}>
+          <Text style={theme.typography.body2}>
+            Don&apos;t have an account?{" "}
+          </Text>
+          <TouchableOpacity onPress={() => navigation.navigate("Register")}>
+            <Text style={styles.link}>Open one now</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 };
 
-// Use theme variables for styling
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background, // Use theme background
+  back: { marginBottom: theme.spacing.lg },
+  error: {
+    backgroundColor: "#F6E7DE",
+    borderRadius: theme.radius.md,
+    color: theme.colors.loss,
+    fontSize: 13,
+    marginBottom: theme.spacing.md,
+    padding: theme.spacing.sm,
   },
-  innerContainer: {
-    flex: 1,
+  field: { marginBottom: theme.spacing.md },
+  footerRow: {
+    flexDirection: "row",
     justifyContent: "center",
-    padding: theme.spacing.lg, // Use theme spacing
+    marginTop: theme.spacing.xl,
   },
-  title: {
-    ...theme.typography.h1, // Use theme typography
-    textAlign: "center",
-    color: theme.colors.primary, // Use theme primary color
-    marginBottom: theme.spacing.sm,
+  link: { color: theme.colors.primary, fontSize: 13, fontWeight: "700" },
+  root: { backgroundColor: theme.colors.background, flex: 1 },
+  scroll: {
+    padding: theme.spacing.lg,
+    paddingBottom: theme.spacing.xxl,
+    paddingTop: 64,
   },
-  subtitle: {
-    ...theme.typography.body1,
-    color: theme.colors.textSecondary,
-    textAlign: "center",
-    marginBottom: theme.spacing.xl, // More space after subtitle
-  },
-  input: {
-    ...theme.components.input, // Use theme input component style
-  },
-  button: {
-    ...theme.components.button, // Use theme button component style
-  },
-  buttonText: {
-    ...theme.components.buttonText, // Use theme button text style
-  },
-  buttonSecondary: {
-    ...theme.components.buttonSecondary, // Use theme secondary button style
-    marginTop: theme.spacing.sm, // Add some space between buttons
-  },
-  buttonSecondaryText: {
-    ...theme.components.buttonSecondaryText, // Use theme secondary button text style
-  },
+  submit: { marginTop: theme.spacing.sm },
+  subtitle: { marginBottom: theme.spacing.xl, marginTop: 6 },
 });
 
 export default LoginScreen;

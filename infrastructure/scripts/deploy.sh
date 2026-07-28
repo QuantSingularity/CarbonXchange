@@ -48,7 +48,7 @@ validate_environment() {
 validate_prerequisites() {
     log_info "Validating prerequisites..."
 
-    local tools=("terraform" "kubectl" "ansible" "aws" "jq")
+    local tools=("terraform" "kubectl" "helm" "ansible" "aws" "jq")
     for tool in "${tools[@]}"; do
         if ! command -v "$tool" &> /dev/null; then
             log_error "$tool is not installed or not in PATH"
@@ -146,20 +146,23 @@ deploy_kubernetes() {
     log_info "Applying network policies..."
     kubectl apply -f security/network-policies.yaml
 
-    # Apply base configurations (namespace comes from each manifest's metadata)
-    log_info "Applying base configurations..."
-    kubectl apply -f base/
+    # Deploy the Helm chart (templates/ + Chart.yaml + per-environment values)
+    local values_file="environments/$ENVIRONMENT/values.yaml"
+    if [[ ! -f "$values_file" ]]; then
+        log_error "Values file not found: $values_file (copy from $values_file.example and fill in secrets)"
+        exit 1
+    fi
+
+    log_info "Deploying Helm chart..."
+    helm upgrade --install carbonxchange . \
+        -f "$values_file" \
+        --namespace "$namespace" \
+        --create-namespace \
+        --wait --timeout 5m
 
     # Apply compliance configurations
     log_info "Applying compliance configurations..."
     kubectl apply -f compliance/
-
-    # Apply environment-specific configurations
-    if [[ -d "environments/$ENVIRONMENT" ]]; then
-        log_info "Applying environment-specific configurations..."
-        # Values files are consumed by Helm/templating, not applied directly
-        log_info "Note: environment values files are used by Helm chart rendering"
-    fi
 
     log_success "Kubernetes configurations deployed"
 }
@@ -199,7 +202,7 @@ verify_deployment() {
     log_info "Verifying Kubernetes resources..."
     kubectl get all -n "$namespace" 2>/dev/null || log_warning "Namespace $namespace not yet available"
 
-    # Check pod status — filter out Completed pods (e.g. migration init containers)
+    # Check pod status, filtering out Completed pods (e.g. migration init containers)
     local failed_pods
     failed_pods=$(kubectl get pods -n "$namespace" \
         --field-selector="status.phase!=Running,status.phase!=Succeeded" \
@@ -218,7 +221,9 @@ verify_deployment() {
 }
 
 cleanup() {
-    cd "$TERRAFORM_DIR" 2>/dev/null && rm -f "$ENVIRONMENT.tfplan" || true
+    if cd "$TERRAFORM_DIR" 2>/dev/null; then
+        rm -f "$ENVIRONMENT.tfplan"
+    fi
 }
 
 main() {

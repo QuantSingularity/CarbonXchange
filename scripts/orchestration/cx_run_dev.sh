@@ -42,11 +42,8 @@ fi
 log "STEP" "Starting CarbonXchange development environment..."
 
 # Execute the orchestrator's start command
-"$ORCHESTRATOR_SCRIPT" start
-
-# Check the exit code of the orchestrator
-if [ $? -eq 0 ]; then
-    log "INFO" "CarbonXchange services are running. Access the application at: http://localhost:3000"
+if "$ORCHESTRATOR_SCRIPT" start; then
+    log "INFO" "CarbonXchange services are running. Access the application at: http://localhost:5173"
     log "INFO" "Press Ctrl+C to stop all services."
 
     # The orchestrator script should handle the wait and cleanup, but for a simple wrapper,
@@ -59,8 +56,12 @@ if [ $? -eq 0 ]; then
 
     trap cleanup SIGINT SIGTERM
 
-    # Keep the script running to wait for the user to press Ctrl+C
-    wait
+    # The actual service processes are daemonized by the orchestrator and are
+    # not direct children of this shell, so a bare `wait` would return
+    # immediately with nothing to wait for. Sleep indefinitely in the
+    # background instead, so the trap above has something to interrupt.
+    sleep infinity &
+    wait $!
 else
     log "ERROR" "Failed to start CarbonXchange services. Check the logs for details."
     exit 1

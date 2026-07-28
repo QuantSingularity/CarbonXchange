@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import theme from "../styles/theme";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -25,13 +26,14 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <View style={styles.container}>
-          <Ionicons name="alert-circle" size={80} color="#DC3545" />
-          <Text style={styles.title}>Oops! Something went wrong</Text>
+          <Ionicons name="alert-circle" size={64} color={theme.colors.loss} />
+          <Text style={styles.title}>Something went wrong</Text>
           <Text style={styles.message}>
-            We apologize for the inconvenience.
+            We apologize for the inconvenience. Try again, and if it keeps
+            happening, restart the app.
           </Text>
           <TouchableOpacity style={styles.button} onPress={this.handleReset}>
-            <Text style={styles.buttonText}>Try Again</Text>
+            <Text style={styles.buttonText}>Try again</Text>
           </TouchableOpacity>
         </View>
       );
@@ -41,27 +43,35 @@ class ErrorBoundary extends React.Component {
 }
 
 const styles = StyleSheet.create({
+  button: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: 14,
+  },
+  buttonText: {
+    color: theme.colors.primaryForeground,
+    fontSize: 16,
+    fontWeight: "700",
+  },
   container: {
+    alignItems: "center",
+    backgroundColor: theme.colors.background,
     flex: 1,
     justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-    backgroundColor: "#F8F9FA",
+    padding: theme.spacing.xl,
   },
-  title: { fontSize: 24, fontWeight: "bold", marginTop: 20, marginBottom: 8 },
   message: {
-    fontSize: 16,
-    color: "#6C757D",
+    ...theme.typography.body2,
+    marginBottom: theme.spacing.xl,
+    maxWidth: "85%",
     textAlign: "center",
-    marginBottom: 32,
   },
-  button: {
-    backgroundColor: "#28A745",
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    borderRadius: 8,
+  title: {
+    ...theme.typography.h1,
+    marginBottom: theme.spacing.sm,
+    marginTop: theme.spacing.lg,
   },
-  buttonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "bold" },
 });
 
 export default ErrorBoundary;

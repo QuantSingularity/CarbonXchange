@@ -52,55 +52,17 @@ check_uncommitted_changes() {
     log "INFO" "No uncommitted changes found."
 }
 
-# Function to get the current version from a file (e.g., package.json)
+# Function to get the current version (delegates to cx_version.sh, which is
+# the single source of truth for the project's VERSION file)
 get_current_version() {
-    local version_file="$PROJECT_ROOT/package.json"
-    if [ -f "$version_file" ]; then
-        grep -oP '"version": "\K[^"]+' "$version_file"
-    else
-        log "WARNING" "package.json not found. Using default version 0.0.0."
-        echo "0.0.0"
-    fi
+    "$SCRIPT_DIR/../tools/cx_version.sh" get
 }
 
-# Function to bump the version
+# Function to bump the version (delegates to cx_version.sh)
 bump_version() {
     local type="$1"
-    local current_version
-    current_version=$(get_current_version)
-    local major minor patch
-    IFS='.' read -r major minor patch <<< "$current_version"
-
-    case "$type" in
-        "major")
-            major=$((major + 1))
-            minor=0
-            patch=0
-            ;;
-        "minor")
-            minor=$((minor + 1))
-            patch=0
-            ;;
-        "patch")
-            patch=$((patch + 1))
-            ;;
-        *)
-            log "ERROR" "Invalid version bump type: $type. Must be major, minor, or patch."
-            exit 1
-            ;;
-    esac
-
-    local new_version="$major.$minor.$patch"
-    log "INFO" "Bumping version from $current_version to $new_version ($type bump)."
-
-    # Update package.json (and potentially other files)
-    local version_file="$PROJECT_ROOT/package.json"
-    if [ -f "$version_file" ]; then
-        sed -i "s/\"version\": \"$current_version\"/\"version\": \"$new_version\"/" "$version_file"
-        log "INFO" "Updated version in package.json."
-    fi
-
-    echo "$new_version"
+    "$SCRIPT_DIR/../tools/cx_version.sh" bump "$type"
+    "$SCRIPT_DIR/../tools/cx_version.sh" get
 }
 
 # Function to create a release
@@ -129,7 +91,7 @@ create_release() {
 
     # 4. Commit version bump and build artifacts
     log "STEP" "Committing version bump and build artifacts..."
-    git add "$PROJECT_ROOT/package.json"
+    git add "$PROJECT_ROOT/VERSION"
     # Add build artifacts if they are tracked (e.g., in a 'dist' folder)
     # git add dist/
     git commit -m "Release: $tag_name"

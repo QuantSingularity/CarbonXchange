@@ -1,13 +1,15 @@
 import { configureStore } from "@reduxjs/toolkit";
-import authReducer from "./slices/authSlice";
-
-// Import other reducers here as they are created
+import authReducer, { sessionExpired } from "./slices/authSlice";
+import { setSessionExpiredHandler } from "../services/api";
 
 const store = configureStore({
   reducer: {
     auth: authReducer,
-    // Add other reducers here
   },
 });
+
+// If a refresh token is invalid/expired, the API client calls this so the
+// Redux store (and therefore the navigator) drops back to the auth stack.
+setSessionExpiredHandler(() => store.dispatch(sessionExpired()));
 
 export default store;

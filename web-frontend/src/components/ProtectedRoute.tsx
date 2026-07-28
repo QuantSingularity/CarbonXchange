@@ -1,28 +1,45 @@
+import type { ReactNode } from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import type { UserRole } from "@/services/api";
 import { Loader2 } from "lucide-react";
-import type React from "react";
-import { Navigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
+export function FullScreenLoader() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+    </div>
+  );
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+export function ProtectedRoute({
+  children,
+  roles,
+}: {
+  children: ReactNode;
+  roles?: UserRole[];
+}) {
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const location = useLocation();
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (isLoading) return <FullScreenLoader />;
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (roles && user && !roles.includes(user.role)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
-};
+}
 
-export default ProtectedRoute;
+export function GuestRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) return <FullScreenLoader />;
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+
+  return <>{children}</>;
+}

@@ -72,10 +72,12 @@ DATABASE_URL=postgresql://user:pass@pgbouncer:6432/carbonxchange
 
 # SQLite (Development only)
 DATABASE_URL=sqlite:///./database/dev.db
-
-# MySQL (Alternative)
-DATABASE_URL=mysql+pymysql://user:pass@localhost:3306/carbonxchange
 ```
+
+Note: the backend only ships the PostgreSQL driver (`psycopg2-binary` in
+`code/backend/requirements.txt`). Other SQLAlchemy-supported engines (MySQL,
+etc.) would need their own driver added to `requirements.txt` first — none
+is included by default.
 
 ### Redis Configuration
 

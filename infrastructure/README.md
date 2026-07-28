@@ -59,6 +59,11 @@ terraform plan -var-file="terraform.tfvars" -out=plan.out
 
 ### 2. Kubernetes Setup & Validation
 
+This is a Helm chart (`Chart.yaml` + `templates/` + per-environment
+`values.yaml`), not a set of raw manifests — the `{{ .Values.x }}`
+placeholders throughout `templates/` require Helm to render before
+`kubectl` can do anything with them.
+
 ```bash
 cd kubernetes
 
@@ -66,16 +71,23 @@ cd kubernetes
 cp environments/dev/values.yaml.example environments/dev/values.yaml
 # Edit values.yaml with your secrets (DO NOT commit this file)
 
-# Validate YAML syntax
+# Validate YAML syntax of the source templates (won't catch unresolved
+# {{ }} expressions — see helm lint/template below for that)
 yamllint -c ../.yamllint .
 
-# Dry-run validation (requires kubectl context)
-kubectl apply --dry-run=client -f base/
+# Lint the chart itself
+helm lint . -f environments/dev/values.yaml
+
+# Render + dry-run validate against a real cluster schema
+helm template carbonxchange . -f environments/dev/values.yaml | kubectl apply --dry-run=client -f -
+
+# Static, non-templated cluster policies (RBAC, network policies, pod
+# security standards) apply directly with kubectl, no Helm involved
 kubectl apply --dry-run=client -f security/
 
 # Apply to cluster (actual deployment)
+# helm install carbonxchange . -f environments/dev/values.yaml --namespace carbonxchange --create-namespace
 # kubectl apply -f security/pod-security-standards.yaml
-# kubectl apply -f base/
 ```
 
 ### 3. Ansible Setup & Validation
@@ -108,11 +120,11 @@ ansible-playbook -i inventory/hosts.yml playbooks/main.yml --check
 ### 4. CI/CD Validation
 
 ```bash
-# Validate workflow syntax
-yamllint ci-cd/ci-cd.yml
+# Validate workflow syntax (the workflow lives at the repo root, not here)
+yamllint ../.github/workflows/cicd.yml
 
 # Local testing with act (optional)
-# act -W ci-cd/ci-cd.yml --job infrastructure-lint
+# act -W ../.github/workflows/cicd.yml --job infrastructure-lint
 ```
 
 ## Environment Variables for Secrets
@@ -168,8 +180,9 @@ terraform init -backend=false
 terraform validate
 cd ..
 
-# 2. Kubernetes YAML
+# 2. Kubernetes YAML + Helm chart
 yamllint -c .yamllint kubernetes/
+cd kubernetes && helm lint . -f environments/dev/values.yaml && cd ..
 
 # 3. Ansible
 cd ansible
@@ -177,7 +190,7 @@ ansible-lint playbooks/ roles/
 cd ..
 
 # 4. CI/CD
-yamllint ci-cd/
+yamllint ../.github/workflows/cicd.yml
 
 echo "✅ All validations passed"
 ```
@@ -189,8 +202,8 @@ echo "✅ All validations passed"
 terraform -chdir=terraform fmt -check -recursive && echo "✓ Format OK"
 terraform -chdir=terraform validate && echo "✓ Validate OK"
 
-# Kubernetes only
-kubectl apply --dry-run=client -f kubernetes/base/
+# Kubernetes only (render the Helm chart, then dry-run validate)
+cd kubernetes && helm template carbonxchange . -f environments/dev/values.yaml | kubectl apply --dry-run=client -f - && cd ..
 
 # Ansible only
 ansible-playbook ansible/playbooks/main.yml --syntax-check
@@ -201,7 +214,6 @@ ansible-playbook ansible/playbooks/main.yml --syntax-check
 ```
 infrastructure/
 ├── README.md                    # This file
-├── ISSUES_FOUND.md              # Detailed audit findings
 ├── .gitignore                   # Comprehensive gitignore
 ├── .yamllint                    # YAML linting config
 │
@@ -213,9 +225,11 @@ infrastructure/
 │   ├── environments/            # Environment-specific configs
 │   └── modules/                 # Reusable terraform modules
 │
-├── kubernetes/
-│   ├── base/                    # Base Kubernetes manifests
-│   ├── security/                # Security policies
+├── kubernetes/                  # Helm chart
+│   ├── Chart.yaml                # Chart metadata
+│   ├── values.yaml               # Default values (mirrors environments/dev)
+│   ├── templates/                # Templated Kubernetes manifests
+│   ├── security/                # Security policies (static, applied directly with kubectl)
 │   │   ├── pod-security-standards.yaml  # Modern PSS (replaces deprecated PSP)
 │   │   ├── network-policies.yaml
 │   │   ├── rbac.yaml
@@ -234,17 +248,12 @@ infrastructure/
 │   │   └── all/vault.yml.example # Vault example
 │   └── .vault_pass.example      # Vault password instructions
 │
-├── ci-cd/
-│   └── ci-cd.yml                # GitHub Actions workflow
-│
-├── scripts/
-│   └── deploy.sh                # Deployment automation
-│
-└── validation_logs/             # Validation output logs
-    ├── terraform_fmt.log
-    ├── terraform_init.log
-    └── terraform_validate.log
+└── scripts/
+    └── deploy.sh                # Deployment automation
 ```
+
+Note: the CI/CD workflow lives at the repository root
+(`.github/workflows/cicd.yml`), not inside `infrastructure/`.
 
 ## Security Best Practices
 

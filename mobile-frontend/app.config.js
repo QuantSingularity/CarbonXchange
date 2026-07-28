@@ -11,7 +11,7 @@ export default {
     splash: {
       image: "./assets/splash-icon.png",
       resizeMode: "contain",
-      backgroundColor: "#ffffff",
+      backgroundColor: "#F3F5EF",
     },
     ios: {
       supportsTablet: true,
@@ -20,7 +20,7 @@ export default {
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
-        backgroundColor: "#ffffff",
+        backgroundColor: "#F3F5EF",
       },
       package: "com.carbonxchange.mobile",
     },
@@ -28,7 +28,7 @@ export default {
       favicon: "./assets/favicon.png",
     },
     extra: {
-      API_BASE_URL: process.env.API_BASE_URL || "http://localhost:3000/api/v1",
+      API_BASE_URL: process.env.API_BASE_URL || "http://localhost:5000/api",
       APP_ENV: process.env.APP_ENV || "development",
       DEBUG: process.env.DEBUG || "true",
       ENABLE_BLOCKCHAIN: process.env.ENABLE_BLOCKCHAIN || "true",

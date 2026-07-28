@@ -1,69 +1,74 @@
 ---
 # roles/database/tasks/main.yml
+# The backend requires PostgreSQL (psycopg2-binary driver, Postgres-specific
+# init.sql) — it has no MySQL/MariaDB client library at all.
 - name: Install database packages
   ansible.builtin.dnf:
     name:
-      - mariadb-server
-      - mariadb
-      - python3-PyMySQL
+      - postgresql-server
+      - postgresql
+      - python3-psycopg2
     state: present
 
-- name: Configure MariaDB
-  ansible.builtin.template:
-    src: my.cnf.j2
-    dest: /etc/my.cnf.d/server.cnf
-    owner: root
-    group: root
-    mode: "0644"
-  notify: Restart MariaDB
+- name: Check if database is already initialized
+  ansible.builtin.stat:
+    path: /var/lib/pgsql/data/PG_VERSION
+  register: database_data_initialized
 
-- name: Start and enable MariaDB
+- name: Initialize PostgreSQL database
+  ansible.builtin.command: postgresql-setup --initdb
+  when: not database_data_initialized.stat.exists
+  become: true
+  register: database_initdb_result
+  changed_when: database_initdb_result.rc == 0
+
+- name: Configure PostgreSQL (postgresql.conf)
+  ansible.builtin.template:
+    src: postgresql.conf.j2
+    dest: /var/lib/pgsql/data/postgresql.conf
+    owner: postgres
+    group: postgres
+    mode: "0600"
+  notify: Restart PostgreSQL
+
+- name: Configure PostgreSQL client authentication (pg_hba.conf)
+  ansible.builtin.template:
+    src: pg_hba.conf.j2
+    dest: /var/lib/pgsql/data/pg_hba.conf
+    owner: postgres
+    group: postgres
+    mode: "0600"
+  notify: Restart PostgreSQL
+
+- name: Start and enable PostgreSQL
   ansible.builtin.systemd:
-    name: mariadb
+    name: postgresql
     state: started
     enabled: true
 
-- name: Set root password
-  community.mysql.mysql_user:
-    name: root
-    password: "{{ vault_database_root_password }}"
-    host_all: true
+- name: Create application database user
+  community.postgresql.postgresql_user:
+    name: "{{ database_user }}"
+    password: "{{ vault_database_password }}"
     state: present
-    login_unix_socket: /var/lib/mysql/mysql.sock
-  no_log: true
-
-- name: Remove anonymous users
-  community.mysql.mysql_user:
-    name: ""
-    host_all: true
-    state: absent
-    login_user: root
-    login_password: "{{ vault_database_root_password }}"
-  no_log: true
-
-- name: Remove test database
-  community.mysql.mysql_db:
-    name: test
-    state: absent
-    login_user: root
-    login_password: "{{ vault_database_root_password }}"
+  become: true
+  become_user: postgres
   no_log: true
 
 - name: Create application database
-  community.mysql.mysql_db:
+  community.postgresql.postgresql_db:
     name: "{{ database_name }}"
+    owner: "{{ database_user }}"
+    encoding: UTF-8
     state: present
-    login_user: root
-    login_password: "{{ vault_database_root_password }}"
-  no_log: true
+  become: true
+  become_user: postgres
 
-- name: Create application database user
-  community.mysql.mysql_user:
-    name: "{{ database_user }}"
-    password: "{{ vault_database_password }}"
-    priv: "{{ database_name }}.*:ALL"
-    host: "%"
-    state: present
-    login_user: root
-    login_password: "{{ vault_database_root_password }}"
-  no_log: true
+- name: Grant privileges on application database to application user
+  community.postgresql.postgresql_privs:
+    login_db: "{{ database_name }}"
+    role: "{{ database_user }}"
+    type: database
+    privs: ALL
+  become: true
+  become_user: postgres

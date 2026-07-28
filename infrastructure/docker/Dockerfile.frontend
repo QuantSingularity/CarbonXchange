@@ -1,9 +1,13 @@
+# Build context for this Dockerfile is the project root (see
+# docker-compose.yml / kubernetes build configs), because it needs both the
+# web-frontend source AND the nginx config that lives in infrastructure/.
+#
 # ── Stage 1: dependency install ───────────────────────────────────────────────
 FROM node:20-alpine AS deps
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY web-frontend/package*.json ./
 RUN npm ci && npm cache clean --force
 
 # ── Stage 2: build ────────────────────────────────────────────────────────────
@@ -12,14 +16,17 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY package*.json ./
-COPY . .
+COPY web-frontend/package*.json ./
+COPY web-frontend/. .
 
-ARG REACT_APP_API_URL=/api
-ARG REACT_APP_ENV=production
+# This is a Vite project — Vite only exposes env vars prefixed with VITE_
+# to client code (via import.meta.env), not Create React App's REACT_APP_*
+# convention, which Vite ignores entirely.
+ARG VITE_API_URL=/api
+ARG VITE_APP_ENV=production
 
-ENV REACT_APP_API_URL=$REACT_APP_API_URL \
-    REACT_APP_ENV=$REACT_APP_ENV
+ENV VITE_API_URL=$VITE_API_URL \
+    VITE_APP_ENV=$VITE_APP_ENV
 
 RUN npm run build
 
@@ -27,7 +34,7 @@ RUN npm run build
 FROM nginx:1.27-alpine AS runtime
 
 LABEL org.opencontainers.image.title="CarbonXchange Frontend" \
-      org.opencontainers.image.description="CarbonXchange React UI" \
+      org.opencontainers.image.description="CarbonXchange web UI" \
       org.opencontainers.image.vendor="CarbonXchange"
 
 # Create non-root user matching Kubernetes securityContext uid/gid 10001
@@ -35,13 +42,10 @@ RUN addgroup -g 10001 -S appgroup && \
     adduser -u 10001 -S appuser -G appgroup
 
 # Copy custom nginx config
-COPY --chown=appuser:appgroup docker/nginx-frontend.conf /etc/nginx/conf.d/default.conf
+COPY --chown=appuser:appgroup infrastructure/docker/nginx-frontend.conf /etc/nginx/conf.d/default.conf
 
-# Remove default nginx config
-RUN rm -f /etc/nginx/conf.d/default.conf.bak
-
-# Copy built assets
-COPY --from=builder --chown=appuser:appgroup /app/build /usr/share/nginx/html
+# Copy built assets — Vite outputs to dist/, not Create React App's build/
+COPY --from=builder --chown=appuser:appgroup /app/dist /usr/share/nginx/html
 
 # Create writable dirs needed by nginx non-root
 RUN mkdir -p /var/cache/nginx /var/run /tmp && \
@@ -59,6 +63,6 @@ USER 10001
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -qO- http://localhost:80/ || exit 1
+    CMD wget -qO- http://localhost:80/healthz || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]

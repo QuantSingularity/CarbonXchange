@@ -3,7 +3,7 @@ import Constants from "expo-constants";
 
 const ENV = {
   API_BASE_URL:
-    Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:3000/api/v1",
+    Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:5000/api",
   APP_ENV: Constants.expoConfig?.extra?.APP_ENV || "development",
   DEBUG: Constants.expoConfig?.extra?.DEBUG === "true",
   ENABLE_BLOCKCHAIN: Constants.expoConfig?.extra?.ENABLE_BLOCKCHAIN !== "false",

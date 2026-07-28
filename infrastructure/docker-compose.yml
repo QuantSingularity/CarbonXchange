@@ -17,32 +17,31 @@ x-restart: &restart-policy
   restart: unless-stopped
 
 services:
-  # ──────────────────────────────────────────────────────────────
+  # ------------------------------------------------------------
   # DATABASE
-  # ──────────────────────────────────────────────────────────────
+  # ------------------------------------------------------------
+  # The backend depends on psycopg2-binary, so it requires PostgreSQL.
+  # See code/backend/requirements.txt and code/backend/init.sql.
   database:
-    image: mysql:8.0
+    image: postgres:15-alpine
     container_name: carbonxchange-database
     <<: *restart-policy
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-dev-root-password}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-carbonxchangedb}
-      MYSQL_USER: ${MYSQL_USER:-appuser}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-dev-db-password}
+      POSTGRES_DB: ${POSTGRES_DB:-carbonxchange}
+      POSTGRES_USER: ${POSTGRES_USER:-carbonxchange}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev-db-password}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+      TZ: UTC
     ports:
-      - "127.0.0.1:3306:3306"
+      - "127.0.0.1:5432:5432"
     volumes:
-      - db-data:/var/lib/mysql
-      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+      - db-data:/var/lib/postgresql/data
+      - ../code/backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test:
         [
-          "CMD",
-          "mysqladmin",
-          "ping",
-          "-u",
-          "root",
-          "-p${MYSQL_ROOT_PASSWORD:-dev-root-password}",
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-carbonxchange} -d ${POSTGRES_DB:-carbonxchange}",
         ]
       interval: 10s
       timeout: 5s
@@ -52,9 +51,9 @@ services:
       - backend-net
     logging: *default-logging
 
-  # ──────────────────────────────────────────────────────────────
+  # ------------------------------------------------------------
   # REDIS
-  # ──────────────────────────────────────────────────────────────
+  # ------------------------------------------------------------
   redis:
     image: redis:7.2-alpine
     container_name: carbonxchange-redis
@@ -86,13 +85,13 @@ services:
       - backend-net
     logging: *default-logging
 
-  # ──────────────────────────────────────────────────────────────
+  # ------------------------------------------------------------
   # BACKEND
-  # ──────────────────────────────────────────────────────────────
+  # ------------------------------------------------------------
   backend:
     build:
-      context: ../backend
-      dockerfile: ../infrastructure/docker/Dockerfile.backend
+      context: ../code/backend
+      dockerfile: ../../infrastructure/docker/Dockerfile.backend
       target: runtime
     image: carbonxchange-backend:dev
     container_name: carbonxchange-backend
@@ -103,27 +102,16 @@ services:
       redis:
         condition: service_healthy
     environment:
-      NODE_ENV: development
-      PORT: "3000"
-      METRICS_PORT: "9090"
-      HEALTH_PORT: "8080"
-      DATABASE_URL: "mysql://${MYSQL_USER:-appuser}:${MYSQL_PASSWORD:-dev-db-password}@database:3306/${MYSQL_DATABASE:-carbonxchangedb}"
-      REDIS_URL: "redis://:${REDIS_PASSWORD:-dev-redis-password}@redis:6379"
-      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-dev-encryption-key-32-chars-long!!}
-      API_KEY_SALT: ${API_KEY_SALT:-dev-api-key-salt}
+      FLASK_ENV: development
+      PORT: "5000"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-carbonxchange}:${POSTGRES_PASSWORD:-dev-db-password}@database:5432/${POSTGRES_DB:-carbonxchange}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:-dev-redis-password}@redis:6379/0"
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production-32chars}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-jwt-secret-change-in-production-32ch}
       LOG_LEVEL: ${LOG_LEVEL:-debug}
       CORS_ORIGINS: "http://localhost:3001,http://frontend:80"
-      ENABLE_AUDIT_LOGGING: "true"
-      ENABLE_SECURITY_HEADERS: "true"
-      RATE_LIMIT_WINDOW_MS: "900000"
-      RATE_LIMIT_MAX_REQUESTS: "1000"
-      SESSION_TIMEOUT_MINUTES: "30"
-      REQUIRE_MFA: "false"
     ports:
-      - "127.0.0.1:3000:3000"
-      - "127.0.0.1:9090:9090"
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:5000:5000"
     volumes:
       - /tmp:/tmp
     networks:
@@ -131,23 +119,23 @@ services:
       - frontend-net
     logging: *default-logging
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health/live"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
 
-  # ──────────────────────────────────────────────────────────────
+  # ------------------------------------------------------------
   # FRONTEND
-  # ──────────────────────────────────────────────────────────────
+  # ------------------------------------------------------------
   frontend:
     build:
-      context: ../frontend
-      dockerfile: ../infrastructure/docker/Dockerfile.frontend
+      context: ..
+      dockerfile: infrastructure/docker/Dockerfile.frontend
       target: runtime
       args:
-        REACT_APP_API_URL: /api
-        REACT_APP_ENV: development
+        VITE_API_URL: /api
+        VITE_APP_ENV: development
     image: carbonxchange-frontend:dev
     container_name: carbonxchange-frontend
     <<: *restart-policy
@@ -166,9 +154,9 @@ services:
       retries: 3
       start_period: 10s
 
-  # ──────────────────────────────────────────────────────────────
+  # ------------------------------------------------------------
   # NGINX REVERSE PROXY (dev gateway)
-  # ──────────────────────────────────────────────────────────────
+  # ------------------------------------------------------------
   nginx:
     image: nginx:1.27-alpine
     container_name: carbonxchange-nginx
@@ -187,9 +175,9 @@ services:
       - backend-net
     logging: *default-logging
 
-  # ──────────────────────────────────────────────────────────────
+  # ------------------------------------------------------------
   # OPTIONAL TOOLS (start with: docker compose --profile tools up)
-  # ──────────────────────────────────────────────────────────────
+  # ------------------------------------------------------------
   adminer:
     image: adminer:4
     container_name: carbonxchange-adminer

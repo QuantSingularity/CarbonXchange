@@ -16,8 +16,6 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Script directory
@@ -28,15 +26,13 @@ PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 # Log file
 LOG_FILE="$PROJECT_ROOT/cx_env_setup.log"
 # Clear log file on start
-> "$LOG_FILE"
+: > "$LOG_FILE"
 
 # Component directories
 BACKEND_DIR="$PROJECT_ROOT/code/backend"
 BLOCKCHAIN_DIR="$PROJECT_ROOT/code/blockchain"
-WEB_FRONTEND_DIR="$PROJECT_ROOT/code/web-frontend"
+WEB_FRONTEND_DIR="$PROJECT_ROOT/web-frontend"
 MOBILE_FRONTEND_DIR="$PROJECT_ROOT/mobile-frontend"
-AI_MODELS_DIR="$PROJECT_ROOT/code/ai_models"
-INFRA_DIR="$PROJECT_ROOT/infrastructure"
 
 # Required versions
 REQUIRED_NODE_VERSION="18.0.0"
@@ -65,6 +61,17 @@ log() {
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
+
+# Determine how to run privileged commands: real sudo, or nothing if we're
+# already root. Falls back to running commands directly (with a warning) if
+# neither applies, which is common in minimal containers.
+if [ "$(id -u)" -eq 0 ]; then
+    SUDO=""
+elif command_exists sudo; then
+    SUDO="sudo"
+else
+    SUDO=""
+fi
 
 # Function to compare versions
 version_greater_equal() {
@@ -101,18 +108,18 @@ install_system_dependencies() {
         "Linux")
             if command_exists apt-get; then
                 log "INFO" "Updating package lists..."
-                sudo apt-get update -y
+                $SUDO apt-get update -y
 
                 log "INFO" "Installing essential packages (build-essential, curl, git, python3, python3-pip, python3-venv)..."
                 # Using DEBIAN_FRONTEND=noninteractive for non-interactive installation
-                sudo DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential curl git python3 python3-pip python3-venv
+                $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential curl git python3 python3-pip python3-venv
             elif command_exists yum; then
                 log "INFO" "Updating package lists..."
-                sudo yum update -y
+                $SUDO yum update -y
 
                 log "INFO" "Installing essential packages..."
-                sudo yum groupinstall -y "Development Tools"
-                sudo yum install -y curl git python3 python3-pip
+                $SUDO yum groupinstall -y "Development Tools"
+                $SUDO yum install -y curl git python3 python3-pip
             else
                 log "WARNING" "Unsupported Linux distribution. Please install dependencies manually."
             fi
@@ -129,8 +136,8 @@ install_system_dependencies() {
         "Windows")
             if is_wsl; then
                 log "INFO" "Running in WSL, installing Linux dependencies..."
-                sudo apt-get update -y
-                sudo DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential curl git python3 python3-pip python3-venv
+                $SUDO apt-get update -y
+                $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential curl git python3 python3-pip python3-venv
             else
                 log "WARNING" "Windows detected but not running in WSL. Please install dependencies manually."
             fi
@@ -150,14 +157,17 @@ setup_node() {
 
         local system_type
         system_type=$(get_system_type)
+        # NodeSource setup scripts and Homebrew formulas are keyed by major
+        # version only (e.g. "18"), not a full semver like "18.0.0".
+        local node_major="${REQUIRED_NODE_VERSION%%.*}"
         case "$system_type" in
             "Linux")
                 # Using nvm is generally safer, but for a simple setup script, we'll use the nodesource repo
-                curl -fsSL https://deb.nodesource.com/setup_"$REQUIRED_NODE_VERSION".x | sudo -E bash -
-                sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
+                curl -fsSL https://deb.nodesource.com/setup_"$node_major".x | $SUDO -E bash -
+                $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
                 ;;
             "macOS")
-                brew install node@"$REQUIRED_NODE_VERSION"
+                brew install node@"$node_major"
                 ;;
             *)
                 log "WARNING" "Please install Node.js manually for your system."
@@ -186,7 +196,7 @@ setup_node() {
         if ! version_greater_equal "$npm_version" "$REQUIRED_NPM_VERSION"; then
             log "WARNING" "npm version $npm_version is older than required version $REQUIRED_NPM_VERSION. Updating npm..."
             # Use npm to update itself globally, which is safer than using sudo if possible
-            npm install -g npm@latest || sudo npm install -g npm@latest
+            npm install -g npm@latest || $SUDO npm install -g npm@latest
         else
             log "INFO" "npm version $npm_version is installed and meets requirements."
         fi
@@ -198,22 +208,24 @@ setup_node() {
     # Install Yarn if needed
     if ! command_exists yarn; then
         log "INFO" "Installing Yarn package manager globally..."
-        npm install -g yarn || sudo npm install -g yarn
+        npm install -g yarn || $SUDO npm install -g yarn
     else
         local yarn_version
         yarn_version=$(yarn -v)
         if ! version_greater_equal "$yarn_version" "$REQUIRED_YARN_VERSION"; then
             log "WARNING" "Yarn version $yarn_version is older than required version $REQUIRED_YARN_VERSION. Updating Yarn..."
-            npm install -g yarn || sudo npm install -g yarn
+            npm install -g yarn || $SUDO npm install -g yarn
         else
             log "INFO" "Yarn version $yarn_version is installed and meets requirements."
         fi
     fi
 
     # Install global npm packages for development tools
-    log "INFO" "Installing required global npm packages (truffle, eslint, prettier, solhint, expo-cli)..."
+    # Note: expo-cli is intentionally excluded — it's deprecated and the
+    # mobile app is run via the local "expo" package (npx expo / npm start).
+    log "INFO" "Installing required global npm packages (truffle, ganache, eslint, prettier, solhint, mocha-junit-reporter)..."
     # Using npm install -g without sudo first, then with sudo as fallback
-    npm install -g truffle eslint prettier solhint expo-cli || sudo npm install -g truffle eslint prettier solhint expo-cli
+    npm install -g truffle ganache eslint prettier solhint mocha-junit-reporter || $SUDO npm install -g truffle ganache eslint prettier solhint mocha-junit-reporter
 
     return 0
 }

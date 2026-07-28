@@ -40,7 +40,7 @@ output "load_balancer_dns" {
 
 output "db_endpoint" {
   description = "Endpoint of the database"
-  value       = module.database.db_endpoint
+  value       = module.database.db_instance_endpoint
   sensitive   = true
 }
 

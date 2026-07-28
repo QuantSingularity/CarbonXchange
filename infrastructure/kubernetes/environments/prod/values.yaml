@@ -14,7 +14,7 @@ backend:
     repository: registry.example.com/app/backend
     tag: production
     pullPolicy: Always
-  containerPort: 3000
+  containerPort: 5000
   servicePort: 80
   resources:
     limits:
@@ -24,6 +24,7 @@ backend:
       cpu: 1000m
       memory: 1Gi
   apiUrl: http://carbonxchange-backend
+  secretKey: prod-flask-secret-key-use-vault
   jwtSecret: prod-jwt-secret-use-vault
   apiKey: prod-api-key-use-vault
   encryptionKey: prod-encryption-key-use-vault!!
@@ -35,9 +36,9 @@ backend:
     path: /metrics
   health:
     port: 8080
-    livenessPath: /health/live
-    readinessPath: /health/ready
-    startupPath: /health/startup
+    livenessPath: /api/health
+    readinessPath: /api/health
+    startupPath: /api/health
     livenessProbe:
       initialDelaySeconds: 60
       periodSeconds: 30
@@ -106,16 +107,15 @@ frontend:
 database:
   replicas: 3
   image:
-    repository: mysql
-    tag: "8.0"
+    repository: postgres
+    tag: "15-alpine"
     pullPolicy: IfNotPresent
-  containerPort: 3306
-  servicePort: 3306
+  containerPort: 5432
+  servicePort: 5432
   name: carbonxchangedb
   user: appuser
   password: prod-db-password-use-vault
-  rootPassword: prod-root-password-use-vault
-  url: "mysql://appuser:prod-db-password-use-vault@carbonxchange-database:3306/carbonxchangedb"
+  url: "postgresql://appuser:prod-db-password-use-vault@carbonxchange-database:5432/carbonxchangedb"
   storageClass: premium-rwo
   storage: 50Gi
   resources:

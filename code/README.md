@@ -98,22 +98,19 @@ CarbonXchange/code/
    flask db upgrade
 
    # Start the server
-   flask run --host=0.0.0.0 --port=8000
+   flask run --host=0.0.0.0 --port=5000
    ```
 
-3. **Blockchain Setup** (Optional)
+3. **Blockchain Setup** (Optional — this is a Truffle project, not Hardhat)
 
    ```bash
    cd ../blockchain
 
-   # Install dependencies
-   npm install
-
    # Compile contracts
-   npx hardhat compile
+   npx truffle compile
 
-   # Deploy to local network
-   npx hardhat run scripts/deploy.js --network localhost
+   # Deploy to local network (requires a local chain, e.g. `npx ganache`)
+   npx truffle migrate --network development
    ```
 
 ## Features
@@ -162,13 +159,13 @@ CarbonXchange/code/
 cd backend
 pytest tests/ -v --cov=src --cov-report=html
 
-# Frontend Tests (>85% coverage)
+# Frontend Tests (>85% coverage) — this is a Vitest project, not Jest
 cd web-frontend
-npm test -- --coverage --watchAll=false
+npm run test:coverage
 
-# Smart Contract Tests
+# Smart Contract Tests (Truffle, not Hardhat)
 cd blockchain
-npx hardhat test
+npx truffle test
 
 # Integration Tests
 npm run test:integration

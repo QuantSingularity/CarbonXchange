@@ -1,57 +1,70 @@
-# ── Stage 1: dependency install ───────────────────────────────────────────────
-FROM node:20-alpine AS deps
+# ── Stage 1: dependency build ──────────────────────────────────────────────
+# The backend is a Python/Flask application (see code/backend/requirements.txt
+# and src/main.py) — this Dockerfile previously assumed a Node.js backend
+# (npm ci, dist/index.js), which doesn't exist anywhere in this project.
+FROM python:3.11-slim AS deps
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --only=production && \
-    npm cache clean --force
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential libpq-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# ── Stage 2: build ────────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir --prefix=/install -r requirements.txt
 
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci
-
-COPY . .
-RUN npm run build 2>/dev/null || true
-
-# ── Stage 3: runtime ──────────────────────────────────────────────────────────
-FROM node:20-alpine AS runtime
+# ── Stage 2: runtime ──────────────────────────────────────────────────────────
+FROM python:3.11-slim AS runtime
 
 LABEL org.opencontainers.image.title="CarbonXchange Backend" \
       org.opencontainers.image.description="CarbonXchange API server" \
       org.opencontainers.image.vendor="CarbonXchange" \
       org.opencontainers.image.source="https://github.com/carbonxchange/backend"
 
-RUN apk add --no-cache dumb-init wget
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends dumb-init curl libpq5 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user matching Kubernetes securityContext uid/gid 10001
-RUN addgroup -g 10001 -S appgroup && \
-    adduser -u 10001 -S appuser -G appgroup
+RUN groupadd -g 10001 appgroup && \
+    useradd -u 10001 -g appgroup -s /usr/sbin/nologin -M appuser
 
 WORKDIR /app
 
-COPY --from=deps --chown=appuser:appgroup /app/node_modules ./node_modules
-COPY --from=builder --chown=appuser:appgroup /app/dist ./dist
-COPY --from=builder --chown=appuser:appgroup /app/package*.json ./
+COPY --from=deps /install /usr/local
+COPY --chown=appuser:appgroup src/ ./src/
 
-RUN mkdir -p /tmp /app/.cache && \
-    chown -R appuser:appgroup /tmp /app/.cache
+RUN mkdir -p /tmp /app/.cache /app/logs /app/uploads && \
+    chown -R appuser:appgroup /tmp /app/.cache /app/logs /app/uploads
 
 USER 10001
 
-EXPOSE 3000 9090 8080
+EXPOSE 5000
 
-ENV NODE_ENV=production \
-    PORT=3000 \
-    METRICS_PORT=9090 \
-    HEALTH_PORT=8080
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    FLASK_ENV=production \
+    PORT=5000 \
+    PYTHONPATH=/app
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD wget -qO- http://localhost:8080/health/live || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:5000/api/health || exit 1
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["node", "dist/index.js"]
+CMD ["gunicorn", \
+     "--bind", "0.0.0.0:5000", \
+     "--workers", "4", \
+     "--worker-class", "gevent", \
+     "--worker-connections", "1000", \
+     "--timeout", "120", \
+     "--keepalive", "5", \
+     "--max-requests", "1000", \
+     "--max-requests-jitter", "100", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "--log-level", "info", \
+     "--preload", \
+     "src.main:app"]

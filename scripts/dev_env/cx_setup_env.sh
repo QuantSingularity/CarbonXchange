@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 
 # Script directory and Project root
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
 # Path to the environment manager script
 ENV_MANAGER_SCRIPT="$SCRIPT_DIR/cx_env_manager.sh"
@@ -42,10 +42,7 @@ fi
 log "STEP" "Starting CarbonXchange environment setup..."
 
 # Execute the environment manager's setup command
-"$ENV_MANAGER_SCRIPT" setup
-
-# Check the exit code of the environment manager
-if [ $? -eq 0 ]; then
+if "$ENV_MANAGER_SCRIPT" setup; then
     log "INFO" "CarbonXchange environment setup completed successfully."
 else
     log "ERROR" "CarbonXchange environment setup failed. Check the logs for details."

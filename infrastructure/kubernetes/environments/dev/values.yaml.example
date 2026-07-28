@@ -13,7 +13,7 @@ backend:
         repository: registry.example.com/carbonxchange/backend
         tag: "1.0.0" # Use specific tags, not 'latest'
         pullPolicy: IfNotPresent
-    containerPort: 3000
+    containerPort: 5000
     servicePort: 80
     resources:
         limits:
@@ -24,6 +24,7 @@ backend:
             memory: 256Mi
     apiUrl: http://carbonxchange-backend
     # SECURITY: Provide via sealed-secrets or external secrets operator
+    secretKey: "REPLACE_WITH_SECRET_KEY" # min 32 chars
     jwtSecret: "REPLACE_WITH_SECRET" # min 32 chars
     apiKey: "REPLACE_WITH_API_KEY"
 
@@ -51,17 +52,16 @@ frontend:
 database:
     replicas: 1
     image:
-        repository: mysql
-        tag: "8.0.36" # Specific version
+        repository: postgres
+        tag: "15-alpine" # Specific version
         pullPolicy: IfNotPresent
-    containerPort: 3306
-    servicePort: 3306
+    containerPort: 5432
+    servicePort: 5432
     name: carbonxchangedb
     user: appuser
     # SECURITY: Use Kubernetes secrets or sealed-secrets
     password: "REPLACE_WITH_DB_PASSWORD"
-    rootPassword: "REPLACE_WITH_ROOT_PASSWORD"
-    url: "mysql://appuser:PASSWORD@carbonxchange-database:3306/carbonxchangedb"
+    url: "postgresql://appuser:PASSWORD@carbonxchange-database:5432/carbonxchangedb"
     storageClass: standard
     storage: 10Gi
     resources:
@@ -101,7 +101,7 @@ ingress:
 
 # General configuration
 logLevel: debug
-imagePullSecrets: regcred
+imagePullSecret: regcred
 
 # Security Notes:
 # 1. For production: Use sealed-secrets, external-secrets, or Vault

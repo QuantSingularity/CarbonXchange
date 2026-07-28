@@ -4,7 +4,6 @@
 # All variables below MUST be set in the encrypted vault.yml
 
 # Database credentials
-vault_database_root_password: "CHANGE_ME_root_password"
 vault_database_password: "CHANGE_ME_app_password"
 
 # Application secrets

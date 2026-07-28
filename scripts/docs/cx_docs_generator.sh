@@ -15,8 +15,6 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Script directory
@@ -27,9 +25,8 @@ PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 # Component directories
 BACKEND_DIR="$PROJECT_ROOT/code/backend"
 BLOCKCHAIN_DIR="$PROJECT_ROOT/code/blockchain"
-WEB_FRONTEND_DIR="$PROJECT_ROOT/code/web-frontend"
+WEB_FRONTEND_DIR="$PROJECT_ROOT/web-frontend"
 MOBILE_FRONTEND_DIR="$PROJECT_ROOT/mobile-frontend"
-DOCS_DIR="$PROJECT_ROOT/docs"
 
 # Output directory for generated documentation
 OUTPUT_DIR="$PROJECT_ROOT/generated-docs"
@@ -83,8 +80,10 @@ generate_api_docs() {
         # Generate API documentation from docstrings using pdoc3
         if command_exists pdoc3; then
             log "INFO" "Generating API documentation from docstrings using pdoc3..."
-            # Assuming the main module is 'app' or 'main' in the backend directory
-            pdoc3 --html --output-dir "$api_docs_dir/docstrings" "$BACKEND_DIR" || log "WARNING" "pdoc3 failed to generate documentation."
+            # Target src/ specifically — it's the actual importable package
+            # (has __init__.py); the backend root also contains venv,
+            # instance, logs, uploads, and static, which aren't Python source.
+            pdoc3 --html --output-dir "$api_docs_dir/docstrings" "$BACKEND_DIR/src" || log "WARNING" "pdoc3 failed to generate documentation."
             log "INFO" "API documentation from docstrings generated at $api_docs_dir/docstrings"
         else
             log "WARNING" "pdoc3 not found. Skipping docstring generation. Install with 'pip install pdoc3'."
@@ -154,10 +153,17 @@ EOF
             if [ -f "$venv_activate" ]; then
                 source "$venv_activate"
                 # Run pytest with coverage, suppressing output to a temp file
-                if python -m pytest --cov="$BACKEND_DIR" --cov-report=term-missing --cov-report=xml:"$status_dir/backend_coverage.xml" "$BACKEND_DIR" > /dev/null 2>&1; then
-                    local coverage
-                    coverage=$(grep -oP 'TOTAL\s+\d+%\s+\d+%\s+\d+%\s+\d+%\s+\K\d+%' "$status_dir/backend_coverage.xml" | tail -n 1)
-                    echo "  - Overall coverage: ${coverage:-N/A}" >> "$report_file"
+                if python -m pytest --cov="$BACKEND_DIR/src" --cov-report=xml:"$status_dir/backend_coverage.xml" "$BACKEND_DIR/tests" > /dev/null 2>&1; then
+                    # Parse the standard Cobertura XML line-rate attribute
+                    # (coverage.py's XML output), rather than trying to grep
+                    # a terminal-style "TOTAL ... %" line out of an XML file.
+                    local coverage="N/A"
+                    local line_rate
+                    line_rate=$(grep -oE 'line-rate="[0-9.]+"' "$status_dir/backend_coverage.xml" | head -n 1 | grep -oE '[0-9.]+')
+                    if [ -n "$line_rate" ]; then
+                        coverage=$(awk -v r="$line_rate" 'BEGIN { printf "%.0f%%", r * 100 }')
+                    fi
+                    echo "  - Overall coverage: ${coverage}" >> "$report_file"
                 else
                     log "WARNING" "Backend test coverage failed to run."
                     echo "  - Overall coverage: N/A (Tests failed or coverage tool not found)" >> "$report_file"
@@ -184,12 +190,13 @@ EOF
         # Check test coverage if npm is available
         if command_exists npm; then
             log "INFO" "Running web frontend tests for coverage report..."
-            # This assumes 'npm test' runs Jest or similar with coverage reporting
-            if (cd "$WEB_FRONTEND_DIR" && npm test -- --coverage --coverageReporters="json-summary" > /dev/null 2>&1); then
+            # This is a Vitest project — use its real reporter flags via the
+            # project's own test:coverage script.
+            if (cd "$WEB_FRONTEND_DIR" && npm run test:coverage -- --coverage.reporter=json-summary > /dev/null 2>&1); then
                 local coverage_file="$WEB_FRONTEND_DIR/coverage/coverage-summary.json"
                 if [ -f "$coverage_file" ]; then
                     local statements
-                    statements=$(grep -oP '"statements":\s*\{\s*"pct":\s*\K[^,]*' "$coverage_file")
+                    statements=$(grep -oE '"statements"\s*:\s*\{[^}]*\}' "$coverage_file" | grep -oE '"pct"\s*:\s*[0-9.]+' | grep -oE '[0-9.]+$')
                     echo "  - Overall coverage: ${statements:-N/A}%" >> "$report_file"
                 else
                     log "WARNING" "Web frontend coverage summary not found."
@@ -221,7 +228,7 @@ EOF
                 local coverage_file="$MOBILE_FRONTEND_DIR/coverage/coverage-summary.json"
                 if [ -f "$coverage_file" ]; then
                     local statements
-                    statements=$(grep -oP '"statements":\s*\{\s*"pct":\s*\K[^,]*' "$coverage_file")
+                    statements=$(grep -oE '"statements"\s*:\s*\{[^}]*\}' "$coverage_file" | grep -oE '"pct"\s*:\s*[0-9.]+' | grep -oE '[0-9.]+$')
                     echo "  - Overall coverage: ${statements:-N/A}%" >> "$report_file"
                 else
                     log "WARNING" "Mobile frontend coverage summary not found."

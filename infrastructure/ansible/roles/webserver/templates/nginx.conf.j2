@@ -1,3 +1,10 @@
+# This file is dropped into /etc/nginx/conf.d/, which is included inside
+# the http {} block of the main nginx.conf (standard RHEL/CentOS nginx
+# packaging) — so directives here, outside any server{} block, are at
+# http-level scope. limit_req_zone specifically MUST be at this level;
+# nginx rejects it inside a server{} block.
+limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+
 server {
     listen 80;
     server_name {{ server_name | default(ansible_fqdn) }};
@@ -42,7 +49,7 @@ server {
 
     # Backend API
     location /api/ {
-        proxy_pass http://localhost:{{ webserver_backend_port | default(3000) }}/;
+        proxy_pass http://localhost:{{ webserver_backend_port | default(5000) }};
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -65,7 +72,7 @@ server {
 
     # Health check endpoint (no auth required)
     location /health {
-        proxy_pass http://localhost:{{ webserver_backend_port | default(3000) }}/health;
+        proxy_pass http://localhost:{{ webserver_backend_port | default(5000) }}/api/health;
         access_log off;
     }
 
@@ -86,8 +93,7 @@ server {
     gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml application/javascript application/json;
     gzip_disable "MSIE [1-6]\.";
 
-    # Rate limiting
-    limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+    # Rate limiting (zone declared at the top of this file)
     location /api {
         limit_req zone=api burst=20 nodelay;
     }

@@ -111,10 +111,12 @@ process_data() {
     log "WARNING" "Data processing is a placeholder. Implement scripts for cleaning, feature engineering, and transformation."
 
     # Example: Run a Python script for processing
-    local processing_script="$PROJECT_ROOT/code/backend/ml/data_processor.py"
+    local processing_script="$PROJECT_ROOT/code/ai_models/training_scripts/data_preprocessing.py"
     if [ -f "$processing_script" ]; then
         log "INFO" "Running Python data processing script..."
-        # Activate virtual environment in a subshell
+        # Note: data_preprocessing.py currently only defines a
+        # preprocess_data(filepath) function with no CLI entry point, so
+        # running it directly is a no-op until it gains a __main__ block.
         (
             set +u
             source "$PROJECT_ROOT/venv/bin/activate"
