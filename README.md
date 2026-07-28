@@ -185,14 +185,7 @@ cd CarbonXchange
 
 ### Manual Local Development Setup
 
-1. Clone the repository:
-
-```bash
-git clone https://github.com/quantsingularity/CarbonXchange.git
-cd CarbonXchange
-```
-
-2. Install dependencies:
+1. Install dependencies:
 
 ```bash
 # Backend dependencies
@@ -208,20 +201,20 @@ cd ../ai-service
 pip install -r requirements.txt
 ```
 
-3. Set up environment variables:
+2. Set up environment variables:
 
 ```bash
 cp .env.example .env
 # Edit .env with your configuration
 ```
 
-4. Start the development environment:
+3. Start the development environment:
 
 ```bash
 docker-compose up -d
 ```
 
-5. Deploy smart contracts to local blockchain:
+4. Deploy smart contracts to local blockchain:
 
 ```bash
 cd code/blockchain
