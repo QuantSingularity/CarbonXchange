@@ -106,11 +106,40 @@ export function sideTone(side: string | null | undefined) {
 
 export function statusTone(status: string | null | undefined) {
   const s = (status || "").toLowerCase();
-  if (["active", "approved", "filled", "settled", "completed", "verified", "confirmed"].includes(s))
+  if (
+    [
+      "active",
+      "approved",
+      "filled",
+      "settled",
+      "completed",
+      "verified",
+      "confirmed",
+    ].includes(s)
+  )
     return "text-gain bg-gain/10 border-gain/20";
-  if (["pending", "pending_review", "in_progress", "open", "under_review", "partially_filled"].includes(s))
+  if (
+    [
+      "pending",
+      "pending_review",
+      "in_progress",
+      "open",
+      "under_review",
+      "partially_filled",
+    ].includes(s)
+  )
     return "text-amber-600 bg-amber-500/10 border-amber-500/20 dark:text-amber-400";
-  if (["rejected", "cancelled", "suspended", "expired", "failed", "closed", "locked"].includes(s))
+  if (
+    [
+      "rejected",
+      "cancelled",
+      "suspended",
+      "expired",
+      "failed",
+      "closed",
+      "locked",
+    ].includes(s)
+  )
     return "text-loss bg-loss/10 border-loss/20";
   return "text-muted-foreground bg-muted border-border";
 }
