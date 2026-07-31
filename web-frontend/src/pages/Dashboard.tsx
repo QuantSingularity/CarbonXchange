@@ -164,7 +164,7 @@ export function Dashboard() {
           <StatCard
             label="7-day avg. price"
             value={
-              marketStats ? formatCurrency(marketStats.average_price) : "—"
+              marketStats ? formatCurrency(marketStats.average_price) : "-"
             }
             icon={TrendingUp}
             hint={

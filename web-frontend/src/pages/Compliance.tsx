@@ -194,7 +194,7 @@ export function Compliance() {
                           {humanize(r.risk_level || undefined)}
                         </TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground">
-                          {r.due_date ? formatDate(r.due_date) : "—"}
+                          {r.due_date ? formatDate(r.due_date) : "-"}
                         </TableCell>
                       </TableRow>
                     ))}

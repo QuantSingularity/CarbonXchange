@@ -117,7 +117,7 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Desktop rail — always dark, an instrument panel regardless of theme */}
+      {/* Desktop rail - always dark, an instrument panel regardless of theme */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-rail-border bg-rail lg:flex">
         <Link
           to="/dashboard"

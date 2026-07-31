@@ -129,7 +129,7 @@ export function Admin() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Total users"
-            value={system ? formatNumber(system.users.total, 0) : "—"}
+            value={system ? formatNumber(system.users.total, 0) : "-"}
             icon={Users}
             hint={
               system
@@ -139,17 +139,17 @@ export function Admin() {
           />
           <StatCard
             label="Orders placed"
-            value={system ? formatNumber(system.trading.orders, 0) : "—"}
+            value={system ? formatNumber(system.trading.orders, 0) : "-"}
             icon={Activity}
           />
           <StatCard
             label="Trades settled"
-            value={system ? formatNumber(system.trading.trades, 0) : "—"}
+            value={system ? formatNumber(system.trading.trades, 0) : "-"}
             icon={Activity}
           />
           <StatCard
             label="KYC approval rate"
-            value={aml ? formatPercent(aml.kyc_approval_rate) : "—"}
+            value={aml ? formatPercent(aml.kyc_approval_rate) : "-"}
             icon={ShieldAlert}
             hint={
               aml
@@ -286,25 +286,25 @@ export function Admin() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total users</span>
                   <span className="font-mono-num">
-                    {system ? formatNumber(system.users.total, 0) : "—"}
+                    {system ? formatNumber(system.users.total, 0) : "-"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Active users</span>
                   <span className="font-mono-num">
-                    {system ? formatNumber(system.users.active, 0) : "—"}
+                    {system ? formatNumber(system.users.active, 0) : "-"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Orders placed</span>
                   <span className="font-mono-num">
-                    {system ? formatNumber(system.trading.orders, 0) : "—"}
+                    {system ? formatNumber(system.trading.orders, 0) : "-"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Trades settled</span>
                   <span className="font-mono-num">
-                    {system ? formatNumber(system.trading.trades, 0) : "—"}
+                    {system ? formatNumber(system.trading.trades, 0) : "-"}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -312,13 +312,13 @@ export function Admin() {
                     Verified projects
                   </span>
                   <span className="font-mono-num">
-                    {system ? formatNumber(system.carbon.projects, 0) : "—"}
+                    {system ? formatNumber(system.carbon.projects, 0) : "-"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Credit batches</span>
                   <span className="font-mono-num">
-                    {system ? formatNumber(system.carbon.credits, 0) : "—"}
+                    {system ? formatNumber(system.carbon.credits, 0) : "-"}
                   </span>
                 </div>
               </CardContent>
@@ -331,19 +331,19 @@ export function Admin() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">KYC approved</span>
                   <span className="font-mono-num">
-                    {aml ? formatNumber(aml.kyc_approved_users, 0) : "—"}
+                    {aml ? formatNumber(aml.kyc_approved_users, 0) : "-"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Approval rate</span>
                   <span className="font-mono-num">
-                    {aml ? formatPercent(aml.kyc_approval_rate) : "—"}
+                    {aml ? formatPercent(aml.kyc_approval_rate) : "-"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Open issues</span>
                   <span className="font-mono-num">
-                    {aml ? formatNumber(aml.open_compliance_issues, 0) : "—"}
+                    {aml ? formatNumber(aml.open_compliance_issues, 0) : "-"}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -351,7 +351,7 @@ export function Admin() {
                     Total compliance records
                   </span>
                   <span className="font-mono-num">
-                    {aml ? formatNumber(aml.total_compliance_records, 0) : "—"}
+                    {aml ? formatNumber(aml.total_compliance_records, 0) : "-"}
                   </span>
                 </div>
               </CardContent>

@@ -192,7 +192,7 @@ export function Trade() {
                         ? formatCurrency(ticker.value, ticker.currency)
                         : marketLoading
                           ? "…"
-                          : "—"}
+                          : "-"}
                     </p>
                   </div>
                   {ticker && (
@@ -216,19 +216,19 @@ export function Trade() {
                       <p className="mt-0.5 font-mono-num text-foreground">
                         {ticker?.high_24h
                           ? formatCurrency(ticker.high_24h)
-                          : "—"}
+                          : "-"}
                       </p>
                     </div>
                     <div>
                       <p>24h low</p>
                       <p className="mt-0.5 font-mono-num text-foreground">
-                        {ticker?.low_24h ? formatCurrency(ticker.low_24h) : "—"}
+                        {ticker?.low_24h ? formatCurrency(ticker.low_24h) : "-"}
                       </p>
                     </div>
                     <div>
                       <p>24h volume</p>
                       <p className="mt-0.5 font-mono-num text-foreground">
-                        {ticker?.volume ? formatNumber(ticker.volume, 0) : "—"}
+                        {ticker?.volume ? formatNumber(ticker.volume, 0) : "-"}
                       </p>
                     </div>
                   </div>

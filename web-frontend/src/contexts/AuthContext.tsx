@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await authApi.me();
       setUser(me);
     } catch (error) {
-      // Non-fatal — surfaced by whichever call site initiated the refresh.
+      // Non-fatal - surfaced by whichever call site initiated the refresh.
       console.error(apiErrorMessage(error));
     }
   };

@@ -58,7 +58,7 @@ export function Home() {
         if (active && !data.error) setStats(data);
       })
       .catch(() => {
-        /* market may be empty on a fresh install — the hero still reads fine without it */
+        /* market may be empty on a fresh install - the hero still reads fine without it */
       });
     return () => {
       active = false;
@@ -81,7 +81,7 @@ export function Home() {
               </h1>
               <p className="mt-5 max-w-lg text-base text-muted-foreground sm:text-lg">
                 CarbonXchange connects verified project developers, corporates,
-                and institutional traders in one order book — with KYC/AML
+                and institutional traders in one order book - with KYC/AML
                 screening, audit-ready records, and permanent retirement built
                 into every trade.
               </p>
@@ -103,7 +103,7 @@ export function Home() {
                     30-day avg. price
                   </dt>
                   <dd className="mt-1 font-mono-num text-lg font-semibold">
-                    {stats ? formatCurrency(stats.average_price) : "—"}
+                    {stats ? formatCurrency(stats.average_price) : "-"}
                   </dd>
                 </div>
                 <div>
@@ -111,7 +111,7 @@ export function Home() {
                     Trades settled
                   </dt>
                   <dd className="mt-1 font-mono-num text-lg font-semibold">
-                    {stats ? formatNumber(stats.trade_count, 0) : "—"}
+                    {stats ? formatNumber(stats.trade_count, 0) : "-"}
                   </dd>
                 </div>
                 <div>
@@ -119,7 +119,7 @@ export function Home() {
                     Volume (tCO&#8322;e)
                   </dt>
                   <dd className="mt-1 font-mono-num text-lg font-semibold">
-                    {stats ? formatNumber(stats.total_volume, 0) : "—"}
+                    {stats ? formatNumber(stats.total_volume, 0) : "-"}
                   </dd>
                 </div>
               </dl>
@@ -171,7 +171,7 @@ export function Home() {
                 <circle cx="400" cy="30" r="4.5" fill="hsl(var(--accent))" />
               </svg>
               <p className="absolute right-0 top-2 font-mono-num text-[11px] text-muted-foreground">
-                Keeling curve, Mauna Loa Observatory — the reason this market
+                Keeling curve, Mauna Loa Observatory - the reason this market
                 exists
               </p>
             </div>
@@ -257,7 +257,7 @@ export function Home() {
               Built for regulated markets
             </p>
             <h2 className="mt-2 font-display text-3xl font-semibold tracking-tight sm:text-4xl">
-              Compliance isn&rsquo;t an afterthought — it&rsquo;s the ledger.
+              Compliance isn&rsquo;t an afterthought - it&rsquo;s the ledger.
             </h2>
             <p className="mt-4 text-muted-foreground">
               Every account passes KYC/AML screening before it can trade. Every

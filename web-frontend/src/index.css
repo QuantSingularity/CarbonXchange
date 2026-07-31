@@ -4,7 +4,9 @@
 
 @layer base {
   :root {
-    /* Mist paper — cool, not cream */
+    color-scheme: light;
+
+    /* Mist paper - cool, not cream */
     --background: 100 12% 96%;
     --foreground: 160 25% 10%;
     --card: 0 0% 100%;
@@ -12,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 160 25% 10%;
 
-    /* Spruce — deep, desaturated forest green (brand, not a semantic gain color) */
+    /* Spruce - deep, desaturated forest green (brand, not a semantic gain color) */
     --primary: 164 46% 22%;
     --primary-foreground: 90 30% 97%;
 
@@ -21,7 +23,7 @@
     --muted: 100 12% 91%;
     --muted-foreground: 160 10% 40%;
 
-    /* Ember — warm rust accent, used for emphasis + sell/negative */
+    /* Ember - warm rust accent, used for emphasis + sell/negative */
     --accent: 21 58% 45%;
     --accent-foreground: 40 40% 98%;
 
@@ -43,7 +45,7 @@
     --chart-4: 197 30% 40%;
     --chart-5: 100 20% 55%;
 
-    /* The trading rail is always dark — an instrument panel, independent of theme */
+    /* The trading rail is always dark - an instrument panel, independent of theme */
     --rail-background: 160 24% 8%;
     --rail-foreground: 90 20% 92%;
     --rail-muted: 120 8% 60%;
@@ -61,7 +63,9 @@
   }
 
   .dark {
-    /* Ink — near-black deep pine, not pure black */
+    color-scheme: dark;
+
+    /* Ink - near-black deep pine, not pure black */
     --background: 160 22% 6%;
     --foreground: 100 15% 92%;
     --card: 160 18% 9%;
@@ -118,10 +122,12 @@
     @apply border-border;
   }
   html {
+    @apply bg-background text-foreground;
     scroll-behavior: smooth;
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    min-height: 100vh;
     font-feature-settings:
       "rlig" 1,
       "calt" 1;
@@ -145,7 +151,7 @@
 
 @layer utilities {
   /* Signature device: a thin rising line, echoing the Keeling-curve shape of
-     atmospheric CO2 concentration — the reason this market exists. */
+     atmospheric CO2 concentration - the reason this market exists. */
   .keeling-line {
     stroke-dasharray: 1000;
     stroke-dashoffset: 1000;

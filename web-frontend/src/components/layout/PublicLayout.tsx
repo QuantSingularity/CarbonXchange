@@ -121,7 +121,7 @@ export function PublicLayout() {
               <Logo />
               <p className="mt-3 max-w-sm text-sm text-muted-foreground">
                 A regulated marketplace for discovering, trading, and retiring
-                verified carbon credits — built for institutions, corporates,
+                verified carbon credits - built for institutions, corporates,
                 and individual offsetters alike.
               </p>
             </div>

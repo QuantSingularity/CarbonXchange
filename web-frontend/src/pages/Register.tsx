@@ -78,7 +78,7 @@ export function Register() {
   };
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
+    <div className="grid min-h-screen bg-background text-foreground lg:grid-cols-2">
       <div className="flex flex-col justify-center px-6 py-12 sm:px-10 lg:px-16">
         <div className="mx-auto w-full max-w-sm">
           <Link to="/">
@@ -255,7 +255,7 @@ export function Register() {
       </div>
 
       <AuthAside
-        quote="Verification isn't a gate to get through once — it's the reason counterparties trust the ledger."
+        quote="Verification isn't a gate to get through once - it's the reason counterparties trust the ledger."
         caption="KYC / AML onboarding"
       />
     </div>

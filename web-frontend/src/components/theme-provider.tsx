@@ -1,5 +1,11 @@
 import type * as React from "react";
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 
 type Theme = "dark" | "light" | "system";
 
@@ -31,22 +37,42 @@ export function ThemeProvider({
     () => (localStorage.getItem(storageKey) as Theme) || defaultTheme,
   );
 
-  useEffect(() => {
+  // useLayoutEffect (not useEffect) so the class - and every CSS variable
+  // derived from it - is applied synchronously before the browser paints
+  // this render, on every theme change and route change alike. The inline
+  // script in index.html already handles the very first paint; this keeps
+  // subsequent client-side updates just as atomic, so background and
+  // foreground colors can never be observed out of sync with each other.
+  useLayoutEffect(() => {
     const root = window.document.documentElement;
 
     root.classList.remove("light", "dark");
 
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light";
+    const resolved =
+      theme === "system"
+        ? window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light"
+        : theme;
 
-      root.classList.add(systemTheme);
-      return;
-    }
+    root.classList.add(resolved);
+    root.style.colorScheme = resolved;
+  }, [theme]);
 
-    root.classList.add(theme);
+  // If the user hasn't picked an explicit theme, keep following the OS
+  // preference live instead of only checking it once on mount.
+  useEffect(() => {
+    if (theme !== "system") return;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const listener = () => {
+      const root = window.document.documentElement;
+      const resolved = media.matches ? "dark" : "light";
+      root.classList.remove("light", "dark");
+      root.classList.add(resolved);
+      root.style.colorScheme = resolved;
+    };
+    media.addEventListener("change", listener);
+    return () => media.removeEventListener("change", listener);
   }, [theme]);
 
   const value = {

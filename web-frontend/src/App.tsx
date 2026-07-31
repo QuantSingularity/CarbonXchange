@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { AppShell } from "@/components/layout/AppShell";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { GuestRoute, ProtectedRoute } from "@/components/ProtectedRoute";
@@ -27,7 +27,7 @@ function App() {
       <AuthProvider>
         <Router>
           <Routes>
-            {/* Public marketing shell — always opens on the homepage */}
+            {/* Public marketing shell - always opens on the homepage */}
             <Route element={<PublicLayout />}>
               <Route path="/" element={<Home />} />
               <Route

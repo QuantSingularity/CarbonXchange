@@ -126,7 +126,7 @@ export function Marketplace() {
         <EmptyState
           icon={Leaf}
           title="No projects found"
-          description="Try a different search term or project type — or check back soon as new projects are verified."
+          description="Try a different search term or project type - or check back soon as new projects are verified."
         />
       ) : (
         <>
@@ -179,7 +179,7 @@ export function Marketplace() {
                         <p className="font-mono-num text-sm font-semibold">
                           {project.estimated_credit_price
                             ? formatCurrency(project.estimated_credit_price)
-                            : "—"}
+                            : "-"}
                         </p>
                       </div>
                       <div className="text-right">

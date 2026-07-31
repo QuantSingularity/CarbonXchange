@@ -36,7 +36,7 @@ export function Login() {
   };
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
+    <div className="grid min-h-screen bg-background text-foreground lg:grid-cols-2">
       <div className="flex flex-col justify-center px-6 py-12 sm:px-10 lg:px-16">
         <div className="mx-auto w-full max-w-sm">
           <Link to="/">
@@ -108,7 +108,7 @@ export function Login() {
       </div>
 
       <AuthAside
-        quote="Every trade settles against a verified, serialized credit — never a promise."
+        quote="Every trade settles against a verified, serialized credit - never a promise."
         caption="Order execution & settlement"
       />
     </div>

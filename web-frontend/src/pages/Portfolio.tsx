@@ -172,7 +172,7 @@ export function Portfolio() {
                 <TableBody>
                   {holdings.map((h) => (
                     <TableRow key={h.id}>
-                      <TableCell>{h.vintage_year || "—"}</TableCell>
+                      <TableCell>{h.vintage_year || "-"}</TableCell>
                       <TableCell className="font-mono-num">
                         {formatNumber(h.quantity, 0)}
                       </TableCell>
@@ -182,12 +182,12 @@ export function Portfolio() {
                       <TableCell className="font-mono-num">
                         {h.current_price
                           ? formatCurrency(h.current_price, h.currency)
-                          : "—"}
+                          : "-"}
                       </TableCell>
                       <TableCell className="font-mono-num">
                         {h.current_value
                           ? formatCurrency(h.current_value, h.currency)
-                          : "—"}
+                          : "-"}
                       </TableCell>
                       <TableCell
                         className={`text-right font-mono-num ${h.total_pnl >= 0 ? "text-gain" : "text-loss"}`}
@@ -292,7 +292,7 @@ export function Portfolio() {
                     <TableCell className="text-right text-xs text-muted-foreground">
                       {p.last_valuation_at
                         ? formatDate(p.last_valuation_at)
-                        : "—"}
+                        : "-"}
                     </TableCell>
                   </TableRow>
                 ))}

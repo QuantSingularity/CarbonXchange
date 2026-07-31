@@ -161,7 +161,7 @@ export function ProjectDetail() {
             <p className="mt-1 font-mono-num font-medium">
               {project.estimated_credit_price
                 ? formatCurrency(project.estimated_credit_price)
-                : "—"}
+                : "-"}
             </p>
           </CardContent>
         </Card>
@@ -196,12 +196,12 @@ export function ProjectDetail() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Methodology</p>
-                <p className="mt-1 font-medium">{project.methodology || "—"}</p>
+                <p className="mt-1 font-medium">{project.methodology || "-"}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Developer</p>
                 <p className="mt-1 font-medium">
-                  {project.developer_name || "—"}
+                  {project.developer_name || "-"}
                 </p>
               </div>
               <div>
@@ -310,7 +310,7 @@ export function ProjectDetail() {
                       {formatNumber(c.quantity, 0)}
                     </TableCell>
                     <TableCell className="font-mono-num">
-                      {c.market_price ? formatCurrency(c.market_price) : "—"}
+                      {c.market_price ? formatCurrency(c.market_price) : "-"}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={c.status} />

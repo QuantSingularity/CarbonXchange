@@ -1,4 +1,4 @@
-# CarbonXchange — Web Frontend
+# CarbonXchange - Web Frontend
 
 A regulated carbon credit trading platform. React 18 + TypeScript + Vite +
 Tailwind CSS + shadcn/ui, fully wired to the Flask backend in `code/backend`.
@@ -17,7 +17,7 @@ of light/dark theme. All tokens live in `src/index.css` and
 
 | Route                              | Description                                                                  |
 | ---------------------------------- | ---------------------------------------------------------------------------- |
-| `/`                                | Public marketing homepage — always the first screen on load                  |
+| `/`                                | Public marketing homepage - always the first screen on load                  |
 | `/login`, `/register`              | Auth                                                                         |
 | `/dashboard`                       | Portfolio summary, recent orders, compliance status                          |
 | `/marketplace`, `/marketplace/:id` | Browse verified projects, drill into a project's credit batches              |
@@ -60,7 +60,7 @@ npm run lint
 ## Known limitations
 
 - The previous test suite (`tests/*.test.tsx`) targeted the pre-rewrite
-  components and has been removed rather than left failing — see
+  components and has been removed rather than left failing - see
   `tests/README.md`. A new suite should be written against the current
   pages/components.
 - The bundle is a single chunk (~260 KB gzipped); route-based code-splitting

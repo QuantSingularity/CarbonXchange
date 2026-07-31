@@ -4,9 +4,10 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/leaf.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <meta
       name="description"
-      content="CarbonXchange — a regulated marketplace for discovering, trading, and retiring verified carbon credits."
+      content="CarbonXchange - a regulated marketplace for discovering, trading, and retiring verified carbon credits."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,7 +15,41 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <title>CarbonXchange — The carbon credit exchange</title>
+    <title>CarbonXchange - The carbon credit exchange</title>
+    <script>
+      // Apply the theme class before any CSS paints. Without this, the
+      // React ThemeProvider only sets the class in a useEffect, which runs
+      // AFTER the first paint - so on the very first frame (and on every
+      // hard reload) the page can paint with no "dark"/"light" class at
+      // all, or with the class applied to only part of the tree. That
+      // first, unstyled frame is what allowed background and foreground
+      // colors to fall out of sync (pale dark-mode text over a still-white
+      // background). Running this synchronously, before <body> and before
+      // Tailwind's compiled CSS is even parsed for layout, guarantees the
+      // class - and therefore every CSS variable derived from it - is
+      // correct from frame zero.
+      (function () {
+        try {
+          var storageKey = "carbonxchange-theme";
+          var stored = localStorage.getItem(storageKey);
+          var theme =
+            stored === "light" || stored === "dark" ? stored : "system";
+          var resolved =
+            theme === "system"
+              ? window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light"
+              : theme;
+          var root = document.documentElement;
+          root.classList.remove("light", "dark");
+          root.classList.add(resolved);
+          root.style.colorScheme = resolved;
+        } catch (e) {
+          // localStorage/matchMedia unavailable (e.g. privacy mode) -
+          // fall back to the default light theme already defined in :root.
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

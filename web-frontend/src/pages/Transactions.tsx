@@ -134,7 +134,7 @@ export function Transactions() {
                       {t.trade_id}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {t.credit_type || "—"}
+                      {t.credit_type || "-"}
                     </TableCell>
                     <TableCell className="font-mono-num">
                       {formatNumber(t.quantity, 0)}
