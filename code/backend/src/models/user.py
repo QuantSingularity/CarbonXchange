@@ -273,6 +273,11 @@ class User(db.Model):
         self.suspension_reason = None
         self.suspension_until = None
         self.locked_until = None
+        # Activation is the only admin-driven path from PENDING to ACTIVE, so
+        # it doubles as the platform's verification gate. Without this,
+        # is_verified never becomes true for KYC-required accounts and
+        # trading (which requires is_verified) is unreachable.
+        self.is_verified = True
 
     def update_risk_assessment(self, risk_level: Any, risk_score: Any = None) -> None:
         self.risk_level = risk_level
