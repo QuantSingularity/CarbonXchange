@@ -224,7 +224,7 @@ CORS_ORIGINS=*
 **Solutions**:
 
 1. Ensure wallet has sufficient balance for gas
-2. Get testnet tokens from faucet (Mumbai):
+2. Get testnet tokens from faucet (Polygon Amoy):
    - https://faucet.polygon.technology/
 
 3. Reset nonce in MetaMask:

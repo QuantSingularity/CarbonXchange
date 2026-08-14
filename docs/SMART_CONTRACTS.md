@@ -55,15 +55,30 @@ Enhanced token with role-based access control, pausable functionality, vintage t
 ```bash
 cd code/blockchain
 
+# Install dependencies (first time only)
+npm install
+
 # Compile contracts
 npx truffle compile
 
-# Deploy to Mumbai testnet
-npx truffle migrate --network mumbai
+# Run the test suite
+npx truffle test
 
-# Deploy to Polygon mainnet
+# Deploy to a local development chain
+npx truffle migrate
+
+# Deploy to the Polygon Amoy testnet (set MNEMONIC or PRIVATE_KEY in .env)
+npx truffle migrate --network polygonTestnet
+
+# Deploy to Polygon mainnet (set MNEMONIC or PRIVATE_KEY in .env)
 npx truffle migrate --network polygon
 ```
+
+`migrations/2_deploy_contracts.js` deploys all four contracts in one pass:
+`CarbonCreditToken`, `Marketplace`, `AdvancedCarbonCreditToken`, and
+`AdvancedMarketplace`. See `code/blockchain/.env.example` for the
+optional environment variables (`FEE_RECIPIENT_ADDRESS`,
+`PAYMENT_TOKEN_ADDRESS`) that configure the advanced contracts.
 
 ## See Also
 

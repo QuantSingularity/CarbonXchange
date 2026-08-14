@@ -32,6 +32,8 @@ export default {
       APP_ENV: process.env.APP_ENV || "development",
       DEBUG: process.env.DEBUG || "true",
       ENABLE_BLOCKCHAIN: process.env.ENABLE_BLOCKCHAIN || "true",
+      BLOCK_EXPLORER_URL:
+        process.env.BLOCK_EXPLORER_URL || "https://polygonscan.com",
       LOG_API_REQUESTS: process.env.LOG_API_REQUESTS || "true",
       eas: {
         projectId: "your-project-id-here",

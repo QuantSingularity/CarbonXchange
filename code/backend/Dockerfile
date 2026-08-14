@@ -43,6 +43,11 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Copy project source
 COPY src/ ./src/
 
+# Optional pre-compiled contract ABIs for on-chain calls (see
+# contracts_abi/README.md - the directory always exists, at minimum with
+# just that README, so this COPY never fails on a clean checkout).
+COPY contracts_abi/ ./contracts_abi/
+
 # Create non-root user for security
 RUN addgroup --system --gid 1001 appgroup \
     && adduser --system --uid 1001 --gid 1001 --no-create-home appuser \

@@ -279,40 +279,59 @@ docker run -d -p 6379:6379 redis:alpine
    - Create a new project
    - Copy the project ID
 
-2. **Configure Environment Variables**
+2. **Deploy Smart Contracts**
+
+```bash
+cd code/blockchain
+npm install
+
+# For testnet (Polygon Amoy)
+npx truffle migrate --network polygonTestnet
+
+# For mainnet (requires significant MATIC for gas)
+npx truffle migrate --network polygon
+```
+
+This deploys `CarbonCreditToken`, `Marketplace`, `AdvancedCarbonCreditToken`,
+and `AdvancedMarketplace`, and writes their addresses to
+`code/blockchain/deployed-addresses.json`.
+
+3. **Configure Environment Variables**
 
 Edit `code/backend/.env`:
 
 ```bash
 # Blockchain Configuration
+FEATURE_BLOCKCHAIN_INTEGRATION=true
 WEB3_PROVIDER_URL=https://polygon-mainnet.infura.io/v3/YOUR_PROJECT_ID
+WEB3_PRIVATE_KEY=your_operator_wallet_private_key
 WEB3_CHAIN_ID=137  # 137 for Polygon, 1 for Ethereum mainnet
 WEB3_GAS_LIMIT=500000
 WEB3_GAS_PRICE_MULTIPLIER=1.1
 
-# Contract Addresses (after deployment)
-CARBON_TOKEN_CONTRACT_ADDRESS=0x...
-MARKETPLACE_CONTRACT_ADDRESS=0x...
-REGISTRY_CONTRACT_ADDRESS=0x...
+# Contract addresses, from code/blockchain/deployed-addresses.json
+CARBON_TOKEN_CONTRACT_ADDRESS=0x...   # AdvancedCarbonCreditToken address
+MARKETPLACE_CONTRACT_ADDRESS=0x...    # AdvancedMarketplace address
+PAYMENT_TOKEN_CONTRACT_ADDRESS=0x...  # ERC20 token the marketplace settles in
 ```
 
-3. **Deploy Smart Contracts**
+The backend operator wallet (`WEB3_PRIVATE_KEY`) must hold `VERIFIER_ROLE`
+and `MINTER_ROLE` on the deployed `AdvancedCarbonCreditToken` contract to
+register/verify projects and issue credits. If it's a different address
+than whichever account ran `truffle migrate`, set
+`BACKEND_OPERATOR_ADDRESS` in `code/blockchain/.env` before deploying so
+the migration grants these roles automatically; otherwise grant them
+manually via `grantRole()` after deployment.
 
-```bash
-cd code/blockchain
+If deploying the backend as a Docker container, see
+`code/backend/contracts_abi/README.md` for the extra step needed to make
+the compiled contract ABIs available inside the image.
 
-# For testnet (Polygon Mumbai)
-npx truffle migrate --network mumbai
-
-# For mainnet (requires significant ETH/MATIC for gas)
-npx truffle migrate --network polygon
-```
-
-4. **Configure MetaMask**
+4. **Configure MetaMask** (for manual/admin chain interactions, not
+   required for the backend itself)
    - Install MetaMask browser extension
    - Add Polygon network
    - Import wallet or create new one
-   - Save private key to `.env` (for server operations only)
 
 ## Verification
 

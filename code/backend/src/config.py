@@ -74,10 +74,13 @@ class BaseConfig:
     WEB3_CHAIN_ID = int(os.getenv("WEB3_CHAIN_ID", "137"))
     WEB3_GAS_LIMIT = int(os.getenv("WEB3_GAS_LIMIT", "500000"))
     WEB3_GAS_PRICE_MULTIPLIER = float(os.getenv("WEB3_GAS_PRICE_MULTIPLIER", "1.1"))
+    # Deployed contract addresses. See code/blockchain/contracts and
+    # code/blockchain/migrations/2_deploy_contracts.js, which deploys all
+    # of these together and writes them to
+    # code/blockchain/deployed-addresses.json for convenience.
     CARBON_TOKEN_CONTRACT_ADDRESS = os.getenv("CARBON_TOKEN_CONTRACT_ADDRESS")
     MARKETPLACE_CONTRACT_ADDRESS = os.getenv("MARKETPLACE_CONTRACT_ADDRESS")
-    REGISTRY_CONTRACT_ADDRESS = os.getenv("REGISTRY_CONTRACT_ADDRESS")
-    ESCROW_CONTRACT_ADDRESS = os.getenv("ESCROW_CONTRACT_ADDRESS")
+    PAYMENT_TOKEN_CONTRACT_ADDRESS = os.getenv("PAYMENT_TOKEN_CONTRACT_ADDRESS")
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/2")
     CELERY_RESULT_BACKEND = os.getenv(
@@ -297,8 +300,7 @@ class ProductionConfig(BaseConfig):
         required_contracts = [
             "CARBON_TOKEN_CONTRACT_ADDRESS",
             "MARKETPLACE_CONTRACT_ADDRESS",
-            "REGISTRY_CONTRACT_ADDRESS",
-            "ESCROW_CONTRACT_ADDRESS",
+            "PAYMENT_TOKEN_CONTRACT_ADDRESS",
         ]
         for contract in required_contracts:
             if cls.FEATURE_BLOCKCHAIN_INTEGRATION and (not getattr(cls, contract)):

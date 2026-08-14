@@ -1,7 +1,11 @@
 """
-Comprehensive tests for BlockchainService
-Covers simulation mode, tx hash generation, all public methods,
-and the get_network_info diagnostics.
+Comprehensive tests for BlockchainService.
+Covers simulation mode (the default in test/dev without WEB3_PROVIDER_URL),
+all public methods, and get_network_info diagnostics.
+
+These tests intentionally don't require a live chain: simulation mode
+exercises the same code paths and return shapes that real-chain mode uses,
+just with deterministic fake tx hashes instead of real ones.
 """
 
 from decimal import Decimal
@@ -33,7 +37,7 @@ class TestSimTxHash:
         assert tx.startswith("0x")
 
     def test_length_is_66_chars(self) -> None:
-        tx = _sim_tx_hash("tokenize", 42, 1000)
+        tx = _sim_tx_hash("issue_credits", 42, 1000, "SN-1")
         assert len(tx) == 66
 
     def test_deterministic(self) -> None:
@@ -42,18 +46,18 @@ class TestSimTxHash:
         assert tx1 == tx2
 
     def test_different_args_produce_different_hashes(self) -> None:
-        tx1 = _sim_tx_hash("tokenize", 1, 100)
-        tx2 = _sim_tx_hash("tokenize", 2, 100)
+        tx1 = _sim_tx_hash("issue_credits", 1, 100)
+        tx2 = _sim_tx_hash("issue_credits", 2, 100)
         assert tx1 != tx2
 
     def test_different_actions_produce_different_hashes(self) -> None:
-        tx1 = _sim_tx_hash("tokenize", 1)
+        tx1 = _sim_tx_hash("issue_credits", 1)
         tx2 = _sim_tx_hash("retire", 1)
         assert tx1 != tx2
 
 
 # ---------------------------------------------------------------------------
-# Simulation mode (default when BLOCKCHAIN_RPC_URL not set)
+# Simulation mode (default when WEB3_PROVIDER_URL not set)
 # ---------------------------------------------------------------------------
 
 
@@ -68,72 +72,131 @@ class TestBlockchainServiceSimulationMode:
     ) -> None:
         assert blockchain_service.operator_address is None
 
-    # tokenize_carbon_credit
-    def test_tokenize_returns_tx_hash(
+    # register_and_verify_project
+    def test_register_project_returns_expected_shape(
         self, blockchain_service: BlockchainService
     ) -> None:
-        tx = blockchain_service.tokenize_carbon_credit(
-            1, Decimal("100"), {"project": "reforestation"}
+        result = blockchain_service.register_and_verify_project(
+            name="Reforestation Project A",
+            methodology="VM0007",
+            location="Brazil",
+            vintage_year=2024,
+            total_credits=Decimal("10000"),
+            standard="VCS",
         )
-        assert tx is not None
-        assert tx.startswith("0x")
-        assert len(tx) == 66
+        assert result is not None
+        assert isinstance(result["onchain_project_id"], int)
+        assert result["register_tx"].startswith("0x")
+        assert result["verify_tx"].startswith("0x")
 
-    def test_tokenize_deterministic(
+    def test_register_project_ids_are_never_reused(
         self, blockchain_service: BlockchainService
     ) -> None:
-        tx1 = blockchain_service.tokenize_carbon_credit(
-            1, Decimal("100"), {"project": "reforestation"}
+        """
+        A real contract's project id counter always increments and never
+        repeats, even for two calls with identical arguments (e.g. two
+        projects that happen to share a name, vintage year, and total
+        credits). The simulated id must match that behaviour, since
+        callers persist it under a uniqueness constraint
+        (CarbonProject.onchain_project_id).
+        """
+        kwargs: dict = dict(
+            name="Project A",
+            methodology="VM0007",
+            location="Brazil",
+            vintage_year=2024,
+            total_credits=Decimal("10000"),
+            standard="VCS",
         )
-        tx2 = blockchain_service.tokenize_carbon_credit(
-            1, Decimal("100"), {"project": "reforestation"}
-        )
-        assert tx1 == tx2
+        r1 = blockchain_service.register_and_verify_project(**kwargs)
+        r2 = blockchain_service.register_and_verify_project(**kwargs)
+        assert r1["onchain_project_id"] != r2["onchain_project_id"]
 
-    def test_tokenize_different_ids_different_hashes(
+    # issue_credits
+    def test_issue_credits_returns_expected_shape(
         self, blockchain_service: BlockchainService
     ) -> None:
-        tx1 = blockchain_service.tokenize_carbon_credit(1, Decimal("100"), {})
-        tx2 = blockchain_service.tokenize_carbon_credit(2, Decimal("100"), {})
-        assert tx1 != tx2
+        result = blockchain_service.issue_credits(
+            onchain_project_id=1,
+            quantity=Decimal("100"),
+            serial_number="SN-0001",
+        )
+        assert result is not None
+        assert result["tx_hash"].startswith("0x")
+        assert isinstance(result["onchain_batch_id"], int)
+
+    # tokenize_carbon_credit (register + issue convenience wrapper)
+    def test_tokenize_registers_when_no_project_id_given(
+        self, blockchain_service: BlockchainService
+    ) -> None:
+        result = blockchain_service.tokenize_carbon_credit(
+            quantity=Decimal("100"),
+            serial_number="SN-0001",
+            project_name="Reforestation Project A",
+            methodology="VM0007",
+            location="Brazil",
+            vintage_year=2024,
+            total_credits=Decimal("10000"),
+            standard="VCS",
+        )
+        assert result is not None
+        assert result["tx_hash"].startswith("0x")
+        assert result["onchain_project_id"] is not None
+        assert result["onchain_batch_id"] is not None
+        assert result["register_tx"] is not None
+
+    def test_tokenize_skips_registration_when_project_id_given(
+        self, blockchain_service: BlockchainService
+    ) -> None:
+        result = blockchain_service.tokenize_carbon_credit(
+            quantity=Decimal("50"),
+            serial_number="SN-0002",
+            project_name="Reforestation Project A",
+            methodology="VM0007",
+            location="Brazil",
+            vintage_year=2024,
+            total_credits=Decimal("10000"),
+            standard="VCS",
+            onchain_project_id=42,
+        )
+        assert result is not None
+        assert result["onchain_project_id"] == 42
+        assert result["register_tx"] is None
 
     # transfer_tokens
     def test_transfer_returns_tx_hash(
         self, blockchain_service: BlockchainService
     ) -> None:
-        tx = blockchain_service.transfer_tokens(
-            "0xSender", "0xReceiver", 1, Decimal("50")
-        )
+        tx = blockchain_service.transfer_tokens("0xReceiver", Decimal("50"))
         assert tx is not None
         assert tx.startswith("0x")
 
     def test_transfer_different_addresses_different_hashes(
         self, blockchain_service: BlockchainService
     ) -> None:
-        tx1 = blockchain_service.transfer_tokens("0xA", "0xB", 1, Decimal("50"))
-        tx2 = blockchain_service.transfer_tokens("0xC", "0xD", 1, Decimal("50"))
+        tx1 = blockchain_service.transfer_tokens("0xB", Decimal("50"))
+        tx2 = blockchain_service.transfer_tokens("0xD", Decimal("50"))
         assert tx1 != tx2
 
     # retire_tokens
     def test_retire_returns_tx_hash(
         self, blockchain_service: BlockchainService
     ) -> None:
-        tx = blockchain_service.retire_tokens("0xOwner", 1, Decimal("25"))
+        tx = blockchain_service.retire_tokens(Decimal("25"), owner_address="0xOwner")
         assert tx is not None
         assert tx.startswith("0x")
 
-    def test_retire_returns_none_for_zero_quantity(
+    def test_retire_zero_quantity_still_returns_hash(
         self, blockchain_service: BlockchainService
     ) -> None:
-        """Retiring 0 tokens should still return a (sim) tx hash."""
-        tx = blockchain_service.retire_tokens("0xOwner", 1, Decimal("0"))
-        assert tx is not None  # sim mode always returns hash
+        tx = blockchain_service.retire_tokens(Decimal("0"), owner_address="0xOwner")
+        assert tx is not None  # sim mode always returns a hash
 
     # get_token_balance
     def test_get_balance_returns_zero_in_sim(
         self, blockchain_service: BlockchainService
     ) -> None:
-        balance = blockchain_service.get_token_balance("0xSomeAddress", 1)
+        balance = blockchain_service.get_token_balance("0xSomeAddress")
         assert balance == Decimal("0")
 
     # verify_transaction
@@ -156,34 +219,35 @@ class TestBlockchainServiceSimulationMode:
         result = blockchain_service.verify_transaction("0x1234")
         assert result["verified"] is False
 
-    # create_marketplace_listing
-    def test_create_listing_returns_tx_hash(
+    # place_sell_order / place_buy_order
+    def test_place_sell_order_returns_tx_hash(
         self, blockchain_service: BlockchainService
     ) -> None:
-        tx = blockchain_service.create_marketplace_listing(
-            "0xSeller", Decimal("100"), Decimal("25.50"), {"credit_type": "VCS"}
+        result = blockchain_service.place_sell_order(
+            amount=Decimal("100"),
+            price_per_token=Decimal("2.5"),
+            vintage_year=2024,
         )
-        assert tx is not None
-        assert tx.startswith("0x")
+        assert result is not None
+        assert result["tx_hash"].startswith("0x")
 
-    def test_create_listing_deterministic(
+    def test_place_buy_order_returns_tx_hash(
         self, blockchain_service: BlockchainService
     ) -> None:
-        tx1 = blockchain_service.create_marketplace_listing(
-            "0xSeller", Decimal("100"), Decimal("25.50")
+        result = blockchain_service.place_buy_order(
+            amount=Decimal("100"),
+            price_per_token=Decimal("2.5"),
+            vintage_year=2024,
         )
-        tx2 = blockchain_service.create_marketplace_listing(
-            "0xSeller", Decimal("100"), Decimal("25.50")
-        )
-        assert tx1 == tx2
+        assert result is not None
+        assert result["tx_hash"].startswith("0x")
 
-    # execute_marketplace_trade
-    def test_execute_trade_returns_tx_hash(
+    def test_sell_and_buy_orders_produce_different_hashes(
         self, blockchain_service: BlockchainService
     ) -> None:
-        tx = blockchain_service.execute_marketplace_trade(42, "0xBuyer", Decimal("10"))
-        assert tx is not None
-        assert tx.startswith("0x")
+        sell = blockchain_service.place_sell_order(Decimal("100"), Decimal("2.5"), 2024)
+        buy = blockchain_service.place_buy_order(Decimal("100"), Decimal("2.5"), 2024)
+        assert sell["tx_hash"] != buy["tx_hash"]
 
     # get_network_info
     def test_network_info_in_sim_mode(
@@ -207,28 +271,38 @@ class TestBlockchainServiceSimulationMode:
             "operator_address",
             "token_contract",
             "marketplace_contract",
+            "payment_token_contract",
         ):
             assert key in info, f"Missing key: {key}"
 
 
 # ---------------------------------------------------------------------------
-# Fallback when BLOCKCHAIN_RPC_URL set but unreachable
+# Fallback when WEB3_PROVIDER_URL set but unreachable
 # ---------------------------------------------------------------------------
 
 
 class TestBlockchainServiceConnectionFallback:
     def test_falls_back_to_simulation_on_bad_rpc(self, monkeypatch: Any) -> None:
-        monkeypatch.setenv("BLOCKCHAIN_RPC_URL", "http://localhost:9999")
+        monkeypatch.setenv("WEB3_PROVIDER_URL", "http://localhost:9999")
         svc = BlockchainService()
         # Should gracefully fall back to simulation mode
         assert svc.simulation_mode is True
 
-    def test_still_returns_tx_hash_after_fallback(self, monkeypatch: Any) -> None:
-        monkeypatch.setenv("BLOCKCHAIN_RPC_URL", "http://localhost:9999")
+    def test_still_returns_result_after_fallback(self, monkeypatch: Any) -> None:
+        monkeypatch.setenv("WEB3_PROVIDER_URL", "http://localhost:9999")
         svc = BlockchainService()
-        tx = svc.tokenize_carbon_credit(1, Decimal("50"), {})
-        assert tx is not None
-        assert tx.startswith("0x")
+        result = svc.tokenize_carbon_credit(
+            quantity=Decimal("50"),
+            serial_number="SN-0001",
+            project_name="Project A",
+            methodology="VM0007",
+            location="Brazil",
+            vintage_year=2024,
+            total_credits=Decimal("1000"),
+            standard="VCS",
+        )
+        assert result is not None
+        assert result["tx_hash"].startswith("0x")
 
 
 # ---------------------------------------------------------------------------
@@ -237,16 +311,18 @@ class TestBlockchainServiceConnectionFallback:
 
 
 class TestTokenAmountPrecision:
-    def test_large_quantity_tokenize(
+    def test_large_quantity_issue_credits(
         self, blockchain_service: BlockchainService
     ) -> None:
         large = Decimal("999999.9999")
-        tx = blockchain_service.tokenize_carbon_credit(1, large, {})
-        assert tx is not None
+        result = blockchain_service.issue_credits(
+            onchain_project_id=1, quantity=large, serial_number="SN-BIG"
+        )
+        assert result is not None
 
     def test_fractional_quantity_retire(
         self, blockchain_service: BlockchainService
     ) -> None:
         frac = Decimal("0.0001")
-        tx = blockchain_service.retire_tokens("0xOwner", 1, frac)
+        tx = blockchain_service.retire_tokens(frac, owner_address="0xOwner")
         assert tx is not None

@@ -37,6 +37,12 @@ WORKDIR /app
 COPY --from=deps /install /usr/local
 COPY --chown=appuser:appgroup src/ ./src/
 
+# Optional pre-compiled contract ABIs for on-chain calls (see
+# code/backend/contracts_abi/README.md - the directory always exists, at
+# minimum with just that README, so this COPY never fails on a clean
+# checkout).
+COPY --chown=appuser:appgroup contracts_abi/ ./contracts_abi/
+
 RUN mkdir -p /tmp /app/.cache /app/logs /app/uploads && \
     chown -R appuser:appgroup /tmp /app/.cache /app/logs /app/uploads
 

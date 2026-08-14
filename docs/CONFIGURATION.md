@@ -170,9 +170,9 @@ WEB3_CHAIN_ID=137
 WEB3_GAS_LIMIT=500000
 WEB3_GAS_PRICE_MULTIPLIER=1.1
 
-# .env - Polygon Mumbai Testnet
-WEB3_PROVIDER_URL=https://polygon-mumbai.infura.io/v3/YOUR_PROJECT_ID
-WEB3_CHAIN_ID=80001
+# .env - Polygon Amoy Testnet
+WEB3_PROVIDER_URL=https://polygon-amoy.infura.io/v3/YOUR_PROJECT_ID
+WEB3_CHAIN_ID=80002
 ```
 
 **Chain IDs:**
@@ -181,17 +181,23 @@ WEB3_CHAIN_ID=80001
 | ---------------- | -------: | -------------------------------- |
 | Ethereum Mainnet |        1 | Production Ethereum              |
 | Polygon Mainnet  |      137 | Production Polygon (recommended) |
-| Ethereum Goerli  |        5 | Ethereum testnet                 |
-| Polygon Mumbai   |    80001 | Polygon testnet                  |
+| Ethereum Sepolia | 11155111 | Ethereum testnet                 |
+| Polygon Amoy     |    80002 | Polygon testnet                  |
 
 ### Smart Contract Addresses
 
-| Option                          | Type   |  Default   | Description                  | Where to set |
-| ------------------------------- | ------ | :--------: | ---------------------------- | ------------ |
-| `CARBON_TOKEN_CONTRACT_ADDRESS` | string | (required) | ERC-20 carbon token contract | .env         |
-| `MARKETPLACE_CONTRACT_ADDRESS`  | string | (required) | Marketplace contract         | .env         |
-| `REGISTRY_CONTRACT_ADDRESS`     | string | (optional) | Registry contract            | .env         |
-| `ESCROW_CONTRACT_ADDRESS`       | string | (optional) | Escrow contract              | .env         |
+`code/blockchain/migrations/2_deploy_contracts.js` deploys
+`CarbonCreditToken`, `Marketplace`, `AdvancedCarbonCreditToken`, and
+`AdvancedMarketplace` together and writes their addresses to
+`code/blockchain/deployed-addresses.json`. The backend only needs the
+"Advanced" pair plus a settlement token:
+
+| Option                           | Type   |  Default   | Description                                                                                  | Where to set |
+| -------------------------------- | ------ | :--------: | -------------------------------------------------------------------------------------------- | ------------ |
+| `CARBON_TOKEN_CONTRACT_ADDRESS`  | string | (required) | Deployed `AdvancedCarbonCreditToken` address                                                 | .env         |
+| `MARKETPLACE_CONTRACT_ADDRESS`   | string | (required) | Deployed `AdvancedMarketplace` address                                                       | .env         |
+| `PAYMENT_TOKEN_CONTRACT_ADDRESS` | string | (required) | ERC20 token AdvancedMarketplace settles in                                                   | .env         |
+| `CONTRACT_ABI_DIR`               | string | (optional) | Override ABI lookup path (needed in containers - see `code/backend/contracts_abi/README.md`) | .env         |
 
 **Configuration after deployment:**
 
@@ -199,7 +205,13 @@ WEB3_CHAIN_ID=80001
 # .env
 CARBON_TOKEN_CONTRACT_ADDRESS=0x1234567890123456789012345678901234567890
 MARKETPLACE_CONTRACT_ADDRESS=0xabcdefabcdefabcdefabcdefabcdefabcdefabcd
+PAYMENT_TOKEN_CONTRACT_ADDRESS=0x9876543210987654321098765432109876543210
 ```
+
+The backend operator wallet (`WEB3_PRIVATE_KEY`) must hold `VERIFIER_ROLE`
+and `MINTER_ROLE` on `AdvancedCarbonCreditToken` to register/verify
+projects and issue credits on the platform's behalf - see the deployment
+notes in `docs/INSTALLATION.md`.
 
 ## Security Configuration
 
@@ -421,7 +433,7 @@ LOG_LEVEL=INFO
 DATABASE_URL=postgresql://user:pass@staging-db:5432/carbonxchange
 CORS_ORIGINS=https://staging.carbonxchange.com
 FEATURE_BLOCKCHAIN_INTEGRATION=true
-WEB3_CHAIN_ID=80001  # Mumbai testnet
+WEB3_CHAIN_ID=80002  # Polygon Amoy testnet
 ```
 
 ### Production

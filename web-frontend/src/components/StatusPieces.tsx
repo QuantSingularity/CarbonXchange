@@ -1,6 +1,8 @@
 import type { LucideIcon } from "lucide-react";
+import { ExternalLink, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
+import { explorerTxUrl, shortenHex } from "@/lib/blockchain";
 import { humanize, statusTone } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +49,66 @@ export function StatusBadge({
     >
       {humanize(status)}
     </Badge>
+  );
+}
+
+/**
+ * Shows whether a credit has been tokenized on-chain. When a tx hash is
+ * available, the badge links out to the configured block explorer (see
+ * src/lib/blockchain.ts) so anyone can independently verify the issuance
+ * transaction - the platform's operator wallet is the sole on-chain actor
+ * (custodial model), so this is a transparency/audit link, not a
+ * wallet-connect action.
+ */
+export function OnChainBadge({
+  isTokenized,
+  txHash,
+  className,
+}: {
+  isTokenized?: boolean;
+  txHash?: string | null;
+  className?: string;
+}) {
+  if (!isTokenized) {
+    return (
+      <Badge
+        variant="outline"
+        className={cn(
+          "gap-1 font-normal text-muted-foreground bg-muted border-border",
+          className,
+        )}
+      >
+        Not yet on-chain
+      </Badge>
+    );
+  }
+
+  const badge = (
+    <Badge
+      variant="outline"
+      className={cn(
+        "gap-1 font-normal text-gain bg-gain/10 border-gain/20",
+        className,
+      )}
+    >
+      <ShieldCheck className="h-3 w-3" />
+      Verified on-chain
+    </Badge>
+  );
+
+  if (!txHash) return badge;
+
+  return (
+    <a
+      href={explorerTxUrl(txHash)}
+      target="_blank"
+      rel="noreferrer noopener"
+      title={`View transaction ${shortenHex(txHash)} on the block explorer`}
+      className="inline-flex items-center gap-1 hover:opacity-80"
+    >
+      {badge}
+      <ExternalLink className="h-3 w-3 text-muted-foreground" />
+    </a>
   );
 }
 

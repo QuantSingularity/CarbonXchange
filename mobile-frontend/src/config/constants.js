@@ -7,6 +7,9 @@ const ENV = {
   APP_ENV: Constants.expoConfig?.extra?.APP_ENV || "development",
   DEBUG: Constants.expoConfig?.extra?.DEBUG === "true",
   ENABLE_BLOCKCHAIN: Constants.expoConfig?.extra?.ENABLE_BLOCKCHAIN !== "false",
+  BLOCK_EXPLORER_URL:
+    Constants.expoConfig?.extra?.BLOCK_EXPLORER_URL ||
+    "https://polygonscan.com",
   LOG_API_REQUESTS: Constants.expoConfig?.extra?.LOG_API_REQUESTS === "true",
 };
 
@@ -27,6 +30,7 @@ export const API_CONFIG = {
 
 export const FEATURES = {
   blockchain: ENV.ENABLE_BLOCKCHAIN,
+  blockExplorerUrl: ENV.BLOCK_EXPLORER_URL,
   biometricAuth: false,
   pushNotifications: false,
   offlineMode: false,

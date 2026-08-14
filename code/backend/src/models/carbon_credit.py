@@ -112,6 +112,11 @@ class CarbonProject(db.Model):
     )
     project_id = Column(String(100), unique=True, nullable=True, index=True)
     registry_id = Column(String(100), nullable=True, index=True)
+    # On-chain project id returned by AdvancedCarbonCreditToken.registerProject
+    # (see code/blockchain/contracts/AdvancedCarbonCreditToken.sol). Set once,
+    # the first time credits under this project are tokenized; subsequent
+    # issuances reuse it instead of re-registering the project on-chain.
+    onchain_project_id = Column(Integer, nullable=True, unique=True, index=True)
     standard: "Column[Any]" = Column(SQLEnum(CreditStandard), nullable=True, index=True)
     country = Column(String(3), nullable=False, index=True)
     region = Column(String(100), nullable=True)
@@ -271,6 +276,7 @@ class CarbonProject(db.Model):
             "project_type": self.project_type.value,
             "status": self.status.value,
             "project_id": self.project_id,
+            "onchain_project_id": self.onchain_project_id,
             "standard": self.standard.value if self.standard else None,
             "country": self.country,
             "region": self.region,
@@ -406,6 +412,10 @@ class CarbonCredit(db.Model):
     blockchain_tx_hash = Column(String(66), nullable=True, index=True)
     smart_contract_address = Column(String(42), nullable=True)
     is_tokenized = Column(Boolean, nullable=False, default=False)
+    # Batch id returned by AdvancedCarbonCreditToken.issueCarbonCredits for
+    # this credit's on-chain issuance (see
+    # code/blockchain/contracts/AdvancedCarbonCreditToken.sol).
+    onchain_batch_id = Column(Integer, nullable=True, index=True)
     buffer_pool_percentage = Column(Numeric(5, 2), nullable=True)
     leakage_percentage = Column(Numeric(5, 2), nullable=True)
     permanence_risk = Column(String(20), nullable=True)
@@ -582,6 +592,14 @@ class CarbonCredit(db.Model):
             "co_benefits": self.co_benefits,
             "compliance_standards": self.compliance_standards,
             "is_tokenized": self.is_tokenized,
+            # Public on-chain provenance: these reference a public
+            # blockchain transaction, not user PII, so they're safe to
+            # expose alongside is_tokenized rather than gating them behind
+            # include_sensitive like ownership/financial fields below.
+            "blockchain_tx_hash": self.blockchain_tx_hash,
+            "onchain_batch_id": self.onchain_batch_id,
+            "smart_contract_address": self.smart_contract_address,
+            "token_id": self.token_id,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }
@@ -594,9 +612,6 @@ class CarbonCredit(db.Model):
                     "reserve_price": (
                         float(self.reserve_price) if self.reserve_price else None
                     ),
-                    "token_id": self.token_id,
-                    "blockchain_tx_hash": self.blockchain_tx_hash,
-                    "smart_contract_address": self.smart_contract_address,
                     "buffer_pool_percentage": (
                         float(self.buffer_pool_percentage)
                         if self.buffer_pool_percentage

@@ -5,7 +5,7 @@ Full CRUD for carbon credits and projects, with blockchain tokenisation hooks.
 
 import logging
 from decimal import Decimal, InvalidOperation
-from typing import Any
+from typing import Any, Optional
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
@@ -27,6 +27,48 @@ logger = logging.getLogger(__name__)
 carbon_credits_bp = Blueprint("carbon_credits", __name__)
 _blockchain = BlockchainService()
 _cc_service = CarbonCreditService()
+
+
+def _tokenize_credit(credit: CarbonCredit, project: CarbonProject) -> Optional[str]:
+    """
+    Orchestrate on-chain tokenisation for `credit`: reuses the project's
+    on-chain id if it's already been registered, otherwise registers +
+    verifies the project first (see BlockchainService.tokenize_carbon_credit).
+
+    On success, persists onchain_project_id (on the project, once),
+    onchain_batch_id / token_id / blockchain_tx_hash / is_tokenized /
+    smart_contract_address (on the credit), and returns the tx hash.
+    Returns None, without persisting anything, on failure so the credit
+    can be retried later via the /tokenize endpoint.
+    """
+    result = _blockchain.tokenize_carbon_credit(
+        quantity=credit.quantity,
+        serial_number=credit.serial_number,
+        project_name=project.name,
+        methodology=project.methodology or "unspecified",
+        location=(
+            f"{project.region}, {project.country}"
+            if project.region
+            else project.country
+        ),
+        vintage_year=credit.vintage_year,
+        total_credits=project.total_credits,
+        standard=project.standard.value if project.standard else "unspecified",
+        onchain_project_id=project.onchain_project_id,
+    )
+    if result is None:
+        return None
+
+    if project.onchain_project_id is None:
+        project.onchain_project_id = result["onchain_project_id"]
+
+    credit.onchain_batch_id = result["onchain_batch_id"]
+    credit.blockchain_tx_hash = result["tx_hash"]
+    credit.smart_contract_address = _blockchain.token_contract_address
+    credit.token_id = f"{result['onchain_project_id']}-{result['onchain_batch_id']}"
+    credit.is_tokenized = True
+    db.session.commit()
+    return result["tx_hash"]
 
 
 # ---------------------------------------------------------------------------
@@ -132,17 +174,10 @@ def create_carbon_credit() -> Any:
     db.session.commit()
     db.session.refresh(credit)
 
-    # Kick off blockchain tokenisation (non-blocking; failure does not roll back)
-    metadata = {
-        "credit_id": credit.id,
-        "serial_number": credit.serial_number,
-        "project_id": credit.project_id,
-        "vintage_year": credit.vintage_year,
-    }
-    tx_hash = _blockchain.tokenize_carbon_credit(credit.id, quantity, metadata)
-    if tx_hash:
-        credit.blockchain_tx_hash = tx_hash
-        db.session.commit()
+    # Kick off blockchain tokenisation (non-blocking; failure does not roll
+    # back the credit record - it stays untokenized and can be retried via
+    # POST /<id>/tokenize).
+    tx_hash = _tokenize_credit(credit, project)
 
     logger.info(
         "Created carbon credit id=%s serial=%s", credit.id, credit.serial_number
@@ -217,11 +252,13 @@ def retire_carbon_credit(credit_id: int) -> Any:
         if not hasattr(credit, "owner_id") or credit.owner_id != user.id:
             return jsonify({"error": "You do not own this credit"}), 403
 
-    wallet = (
-        getattr(user, "wallet_address", None)
-        or "0x0000000000000000000000000000000000000000"
+    wallet = getattr(user, "wallet_address", None)
+    tx_hash = _blockchain.retire_tokens(
+        credit.quantity,
+        purpose=f"Retirement of credit {credit.serial_number}",
+        beneficiary=user.email if hasattr(user, "email") else "",
+        owner_address=wallet,
     )
-    tx_hash = _blockchain.retire_tokens(wallet, credit.id, credit.quantity)
 
     credit.status = CreditStatus.RETIRED
     if tx_hash:
@@ -244,19 +281,20 @@ def retire_carbon_credit(credit_id: int) -> Any:
 def tokenize_carbon_credit(credit_id: int) -> Any:
     """Manually (re-)tokenize a carbon credit on the blockchain."""
     credit = CarbonCredit.query.get_or_404(credit_id)
-    metadata = {
-        "credit_id": credit.id,
-        "serial_number": credit.serial_number,
-        "project_id": credit.project_id,
-        "vintage_year": credit.vintage_year,
-    }
-    tx_hash = _blockchain.tokenize_carbon_credit(credit.id, credit.quantity, metadata)
+    project = CarbonProject.query.get_or_404(credit.project_id)
+
+    tx_hash = _tokenize_credit(credit, project)
     if not tx_hash:
         return jsonify({"error": "Blockchain tokenisation failed"}), 502
 
-    credit.blockchain_tx_hash = tx_hash
-    db.session.commit()
-    return jsonify({"credit_id": credit_id, "blockchain_tx": tx_hash})
+    return jsonify(
+        {
+            "credit_id": credit_id,
+            "blockchain_tx": tx_hash,
+            "onchain_project_id": project.onchain_project_id,
+            "onchain_batch_id": credit.onchain_batch_id,
+        }
+    )
 
 
 @carbon_credits_bp.route("/<int:credit_id>/verify-tx", methods=["GET"])

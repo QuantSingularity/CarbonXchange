@@ -1,120 +1,85 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
+const CarbonCreditToken = artifacts.require("CarbonCreditToken");
 
-// Helper function to convert Ether to Wei
-const toWei = (value) => ethers.parseEther(value.toString());
+const { expectRevert } = require("./helpers/expectRevert");
 
-describe("CarbonCreditToken", function () {
-  let CarbonCreditToken;
-  let carbonCreditToken;
-  let owner;
-  let addr1;
-  let addr2;
-  let addrs;
+contract("CarbonCreditToken", (accounts) => {
+  const [owner, alice, bob] = accounts;
+  const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
-  // Deploy the contract before each test
-  beforeEach(async function () {
-    // Get the signers (accounts)
-    [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
+  let token;
 
-    // Deploy the CarbonCreditToken contract
-    CarbonCreditToken = await ethers.getContractFactory("CarbonCreditToken");
-    carbonCreditToken = await CarbonCreditToken.deploy(toWei(1000000)); // Initial supply of 1,000,000 tokens
-    await carbonCreditToken.waitForDeployment();
+  beforeEach(async () => {
+    token = await CarbonCreditToken.new(owner, { from: owner });
   });
 
-  describe("Deployment", function () {
-    it("Should set the correct name and symbol", async function () {
-      expect(await carbonCreditToken.name()).to.equal("Carbon Credit Token");
-      expect(await carbonCreditToken.symbol()).to.equal("CCT");
-    });
-
-    it("Should assign the total supply to the owner", async function () {
-      const ownerBalance = await carbonCreditToken.balanceOf(owner.address);
-      expect(await carbonCreditToken.totalSupply()).to.equal(ownerBalance);
-      expect(ownerBalance).to.equal(toWei(1000000));
-    });
+  it("mints the initial supply of 1,000,000 tokens to the deployer", async () => {
+    const balance = await token.balanceOf(owner);
+    assert.equal(balance.toString(), web3.utils.toWei("1000000", "ether"));
   });
 
-  describe("Transactions", function () {
-    it("Should transfer tokens between accounts", async function () {
-      // Transfer 50 tokens from owner to addr1
-      await expect(carbonCreditToken.transfer(addr1.address, toWei(50)))
-        .to.emit(carbonCreditToken, "Transfer")
-        .withArgs(owner.address, addr1.address, toWei(50));
+  it("sets the expected name, symbol and decimals", async () => {
+    assert.equal(await token.name(), "CarbonCredit");
+    assert.equal(await token.symbol(), "CCO2");
+    assert.equal((await token.decimals()).toString(), "18");
+  });
 
-      // Check balances
-      const ownerBalance = await carbonCreditToken.balanceOf(owner.address);
-      const addr1Balance = await carbonCreditToken.balanceOf(addr1.address);
+  it("sets the deployer-provided address as owner", async () => {
+    assert.equal(await token.owner(), owner);
+  });
 
-      expect(ownerBalance).to.equal(toWei(999950));
-      expect(addr1Balance).to.equal(toWei(50));
+  describe("mint", () => {
+    it("allows the owner to mint new tokens", async () => {
+      const amount = web3.utils.toWei("500", "ether");
+      const receipt = await token.mint(alice, amount, { from: owner });
+
+      assert.equal((await token.balanceOf(alice)).toString(), amount);
+      assert.equal(receipt.logs[0].event, "CreditsMinted");
+      assert.equal(receipt.logs[0].args.to, alice);
+      assert.equal(receipt.logs[0].args.amount.toString(), amount);
     });
 
-    it("Should fail if sender doesn’t have enough tokens", async function () {
-      const initialOwnerBalance = await carbonCreditToken.balanceOf(
-        owner.address,
+    it("rejects mint calls from a non-owner", async () => {
+      await expectRevert(
+        token.mint(alice, web3.utils.toWei("10", "ether"), { from: alice }),
       );
+    });
 
-      // Try to send more than the owner's balance from addr1 (who has 0)
-      await expect(
-        carbonCreditToken.connect(addr1).transfer(owner.address, toWei(1)),
-      ).to.be.revertedWithCustomError(
-        carbonCreditToken,
-        "ERC20InsufficientBalance",
+    it("rejects minting to the zero address", async () => {
+      await expectRevert(
+        token.mint(ZERO_ADDRESS, web3.utils.toWei("10", "ether"), {
+          from: owner,
+        }),
       );
+    });
 
-      // Owner's balance should not change
-      expect(await carbonCreditToken.balanceOf(owner.address)).to.equal(
-        initialOwnerBalance,
-      );
+    it("rejects minting a zero amount", async () => {
+      await expectRevert(token.mint(alice, 0, { from: owner }));
     });
   });
 
-  describe("Minting and Burning (Carbon Credit Specific)", function () {
-    it("Should allow the owner to mint new tokens", async function () {
-      const mintAmount = toWei(100);
-      const initialSupply = await carbonCreditToken.totalSupply();
+  describe("burn", () => {
+    it("allows a holder to burn their own tokens", async () => {
+      const amount = web3.utils.toWei("100", "ether");
+      await token.mint(alice, amount, { from: owner });
 
-      await expect(carbonCreditToken.mint(addr1.address, mintAmount))
-        .to.emit(carbonCreditToken, "Transfer")
-        .withArgs(ethers.ZeroAddress, addr1.address, mintAmount);
+      await token.burn(amount, { from: alice });
 
-      // Check new supply and balance
-      expect(await carbonCreditToken.totalSupply()).to.equal(
-        initialSupply + mintAmount,
-      );
-      expect(await carbonCreditToken.balanceOf(addr1.address)).to.equal(
-        mintAmount,
-      );
+      assert.equal((await token.balanceOf(alice)).toString(), "0");
+    });
+  });
+
+  describe("standard ERC20 behaviour", () => {
+    it("transfers tokens between accounts", async () => {
+      const amount = web3.utils.toWei("50", "ether");
+      await token.transfer(alice, amount, { from: owner });
+      assert.equal((await token.balanceOf(alice)).toString(), amount);
     });
 
-    it("Should prevent non-owners from minting tokens", async function () {
-      const mintAmount = toWei(100);
-      // Assuming the contract uses Ownable or similar access control
-      await expect(
-        carbonCreditToken.connect(addr1).mint(addr1.address, mintAmount),
-      ).to.be.revertedWith("Ownable: caller is not the owner");
-    });
-
-    it("Should allow burning of tokens", async function () {
-      // First, transfer tokens to addr1
-      await carbonCreditToken.transfer(addr1.address, toWei(50));
-      const initialBalance = await carbonCreditToken.balanceOf(addr1.address);
-      const burnAmount = toWei(10);
-
-      // Burn tokens from addr1's account
-      await expect(carbonCreditToken.connect(addr1).burn(burnAmount))
-        .to.emit(carbonCreditToken, "Transfer")
-        .withArgs(addr1.address, ethers.ZeroAddress, burnAmount);
-
-      // Check balance and total supply
-      expect(await carbonCreditToken.balanceOf(addr1.address)).to.equal(
-        initialBalance - burnAmount,
-      );
-      expect(await carbonCreditToken.totalSupply()).to.equal(
-        toWei(1000000) - burnAmount,
-      );
+    it("supports approve + transferFrom", async () => {
+      const amount = web3.utils.toWei("20", "ether");
+      await token.approve(bob, amount, { from: owner });
+      await token.transferFrom(owner, alice, amount, { from: bob });
+      assert.equal((await token.balanceOf(alice)).toString(), amount);
     });
   });
 });

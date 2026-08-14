@@ -11,7 +11,12 @@ import {
   Recycle,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
-import { StatusBadge, EmptyState, ErrorState } from "@/components/StatusPieces";
+import {
+  StatusBadge,
+  OnChainBadge,
+  EmptyState,
+  ErrorState,
+} from "@/components/StatusPieces";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -210,6 +215,14 @@ export function ProjectDetail() {
                   {project.project_id}
                 </p>
               </div>
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  On-chain project
+                </p>
+                <p className="mt-1 font-mono-num font-medium">
+                  {project.onchain_project_id ?? "Not yet registered"}
+                </p>
+              </div>
             </div>
 
             <div>
@@ -296,6 +309,7 @@ export function ProjectDetail() {
                   <TableHead>Quantity</TableHead>
                   <TableHead>Market price</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>On-chain</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -314,6 +328,12 @@ export function ProjectDetail() {
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={c.status} />
+                    </TableCell>
+                    <TableCell>
+                      <OnChainBadge
+                        isTokenized={c.is_tokenized}
+                        txHash={c.blockchain_tx_hash}
+                      />
                     </TableCell>
                     <TableCell className="text-right">
                       {c.is_available && (

@@ -202,6 +202,7 @@ export interface CarbonProject {
   project_type: string;
   status: string;
   project_id: string;
+  onchain_project_id?: number | null;
   standard: string | null;
   country: string;
   region?: string | null;
@@ -255,6 +256,10 @@ export interface CarbonCredit {
   co_benefits?: unknown;
   compliance_standards?: unknown;
   is_tokenized: boolean;
+  onchain_batch_id?: number | null;
+  blockchain_tx_hash?: string | null;
+  smart_contract_address?: string | null;
+  token_id?: string | null;
   created_at: string;
   updated_at: string;
 }

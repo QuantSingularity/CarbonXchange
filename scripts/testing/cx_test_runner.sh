@@ -118,8 +118,9 @@ run_blockchain_tests() {
     local exit_code=0
     (
         cd "$BLOCKCHAIN_DIR"
-        # This project uses Truffle (see truffle-config.js), invoked via the
-        # globally-installed truffle CLI since there's no local package.json.
+        # This project uses Truffle (see truffle-config.js). `npx` will use
+        # the local Truffle install from package.json if present, falling
+        # back to a global install otherwise.
         npx truffle test --reporter mocha-junit-reporter --reporter-options mochaFile="$report_dir/blockchain-tests.xml"
     ) || exit_code=$?
 

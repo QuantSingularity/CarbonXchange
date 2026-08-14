@@ -4,6 +4,7 @@ import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import StatusBadge from "../../components/StatusBadge";
+import OnChainBadge from "../../components/OnChainBadge";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import ErrorMessage from "../../components/ErrorMessage";
 import EmptyState from "../../components/EmptyState";
@@ -149,6 +150,12 @@ const ProjectDetailScreen = () => {
           </Text>
         </View>
         <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>On-chain project</Text>
+          <Text style={styles.detailValue}>
+            {project.onchain_project_id ?? "Not yet registered"}
+          </Text>
+        </View>
+        <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Start date</Text>
           <Text style={styles.detailValue}>
             {formatDate(project.project_start_date)}
@@ -178,6 +185,11 @@ const ProjectDetailScreen = () => {
                   Vintage {c.vintage_year} · {formatNumber(c.quantity, 0)}{" "}
                   credits
                 </Text>
+                <OnChainBadge
+                  isTokenized={c.is_tokenized}
+                  txHash={c.blockchain_tx_hash}
+                  style={{ marginTop: 6 }}
+                />
               </View>
               <View style={{ alignItems: "flex-end" }}>
                 <Text style={styles.creditPrice}>

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity 0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title AdvancedCarbonCreditToken
@@ -29,8 +29,7 @@ contract AdvancedCarbonCreditToken is
     AccessControl,
     ReentrancyGuard
 {
-    using SafeMath for uint256;
-    using Counters for Counters.Counter;
+    using SafeERC20 for IERC20;
 
     // Role definitions
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
@@ -40,10 +39,11 @@ contract AdvancedCarbonCreditToken is
     bytes32 public constant AUDITOR_ROLE = keccak256("AUDITOR_ROLE");
     bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
 
-    // Counters
-    Counters.Counter private _projectIdCounter;
-    Counters.Counter private _batchIdCounter;
-    Counters.Counter private _retirementIdCounter;
+    // Counters (plain incrementing counters; Solidity 0.8's built-in
+    // overflow checks make the OpenZeppelin Counters helper unnecessary)
+    uint256 private _projectIdCounter;
+    uint256 private _batchIdCounter;
+    uint256 private _retirementIdCounter;
 
     // Structs
     struct CarbonProject {
@@ -226,8 +226,7 @@ contract AdvancedCarbonCreditToken is
         }
 
         require(
-            dailyTransactionVolume[user].add(amount) <=
-                maxDailyTransactionAmount,
+            dailyTransactionVolume[user] + amount <= maxDailyTransactionAmount,
             "Daily transaction volume limit exceeded"
         );
         require(
@@ -257,13 +256,21 @@ contract AdvancedCarbonCreditToken is
         _grantRole(MINTER_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
         _grantRole(COMPLIANCE_ROLE, admin);
+        // VERIFIER_ROLE gates registerProject/verifyProject. Without
+        // granting it here, no address holds it after deployment and
+        // those functions become permanently uncallable until the admin
+        // manually grants it post-deploy.
+        _grantRole(VERIFIER_ROLE, admin);
+
+        require(feeRecipient_ != address(0), "Invalid fee recipient");
 
         feeRecipient = feeRecipient_;
 
-        // Initialize counters
-        _projectIdCounter.increment(); // Start from 1
-        _batchIdCounter.increment();
-        _retirementIdCounter.increment();
+        // Initialize counters so the first id issued is 1 (0 is reserved
+        // to mean "does not exist").
+        _projectIdCounter = 1;
+        _batchIdCounter = 1;
+        _retirementIdCounter = 1;
     }
 
     /**
@@ -288,8 +295,8 @@ contract AdvancedCarbonCreditToken is
         );
         require(totalCredits > 0, "Total credits must be positive");
 
-        uint256 projectId = _projectIdCounter.current();
-        _projectIdCounter.increment();
+        uint256 projectId = _projectIdCounter;
+        _projectIdCounter++;
 
         projects[projectId] = CarbonProject({
             projectId: projectId,
@@ -322,7 +329,11 @@ contract AdvancedCarbonCreditToken is
             "Project already processed"
         );
 
-        projects[projectId].status = ProjectStatus.Verified;
+        // Verification activates the project for issuance in one step.
+        // (There was previously no code path that ever moved a project from
+        // Verified to Active, which made issueCarbonCredits permanently
+        // unreachable via onlyActiveProject.)
+        projects[projectId].status = ProjectStatus.Active;
         projects[projectId].verificationDate = block.timestamp;
         projects[projectId].isActive = true;
 
@@ -345,13 +356,17 @@ contract AdvancedCarbonCreditToken is
     {
         require(amount > 0, "Amount must be positive");
         require(
-            projects[projectId].issuedCredits.add(amount) <=
+            !blacklisted[projects[projectId].developer],
+            "Project developer is blacklisted"
+        );
+        require(
+            projects[projectId].issuedCredits + amount <=
                 projects[projectId].totalCredits,
             "Exceeds project total credits"
         );
 
-        uint256 batchId = _batchIdCounter.current();
-        _batchIdCounter.increment();
+        uint256 batchId = _batchIdCounter;
+        _batchIdCounter++;
 
         // Create batch record
         batches[batchId] = CreditBatch({
@@ -367,14 +382,10 @@ contract AdvancedCarbonCreditToken is
         });
 
         // Update project issued credits
-        projects[projectId].issuedCredits = projects[projectId]
-            .issuedCredits
-            .add(amount);
+        projects[projectId].issuedCredits += amount;
 
         // Update vintage year supply
-        vintageYearSupply[projects[projectId].vintageYear] = vintageYearSupply[
-            projects[projectId].vintageYear
-        ].add(amount);
+        vintageYearSupply[projects[projectId].vintageYear] += amount;
 
         // Add to project batches
         projectBatches[projectId].push(batchId);
@@ -385,9 +396,7 @@ contract AdvancedCarbonCreditToken is
         // Update user vintage balance
         userVintageBalance[projects[projectId].developer][
             projects[projectId].vintageYear
-        ] = userVintageBalance[projects[projectId].developer][
-            projects[projectId].vintageYear
-        ].add(amount);
+        ] += amount;
 
         emit BatchIssued(batchId, projectId, amount);
         return batchId;
@@ -405,12 +414,12 @@ contract AdvancedCarbonCreditToken is
         require(balanceOf(msg.sender) >= amount, "Insufficient balance");
 
         // Calculate retirement fee
-        uint256 fee = amount.mul(retirementFeeRate).div(10000);
-        uint256 netAmount = amount.sub(fee);
+        uint256 fee = (amount * retirementFeeRate) / 10000;
+        uint256 netAmount = amount - fee;
 
         // Create retirement record
-        uint256 retirementId = _retirementIdCounter.current();
-        _retirementIdCounter.increment();
+        uint256 retirementId = _retirementIdCounter;
+        _retirementIdCounter++;
 
         retirements[retirementId] = RetirementRecord({
             retirementId: retirementId,
@@ -518,8 +527,8 @@ contract AdvancedCarbonCreditToken is
         returns (bool)
     {
         // Calculate transfer fee
-        uint256 fee = amount.mul(transferFeeRate).div(10000);
-        uint256 netAmount = amount.sub(fee);
+        uint256 fee = (amount * transferFeeRate) / 10000;
+        uint256 netAmount = amount - fee;
 
         // Update transaction tracking
         _updateTransactionTracking(msg.sender, amount);
@@ -552,8 +561,8 @@ contract AdvancedCarbonCreditToken is
         returns (bool)
     {
         // Calculate transfer fee
-        uint256 fee = amount.mul(transferFeeRate).div(10000);
-        uint256 netAmount = amount.sub(fee);
+        uint256 fee = (amount * transferFeeRate) / 10000;
+        uint256 netAmount = amount - fee;
 
         // Update transaction tracking
         _updateTransactionTracking(from, amount);
@@ -580,8 +589,8 @@ contract AdvancedCarbonCreditToken is
             dailyTransactionCount[user] = 0;
         }
 
-        dailyTransactionVolume[user] = dailyTransactionVolume[user].add(amount);
-        dailyTransactionCount[user] = dailyTransactionCount[user].add(1);
+        dailyTransactionVolume[user] += amount;
+        dailyTransactionCount[user] += 1;
         lastTransactionTime[user] = block.timestamp;
     }
 
@@ -676,9 +685,23 @@ contract AdvancedCarbonCreditToken is
      * @dev Check if user needs compliance check
      */
     function needsComplianceCheck(address user) external view returns (bool) {
-        return
-            block.timestamp - complianceStatus[user].timestamp >
-            complianceCheckInterval;
+        ComplianceCheck memory record = complianceStatus[user];
+
+        // A user who has never been explicitly assessed is treated as
+        // compliant by default, consistent with the onlyCompliant modifier
+        // above. Without this check, every fresh user's record.timestamp
+        // defaults to 0, making `block.timestamp - 0` exceed
+        // complianceCheckInterval immediately and permanently flagging
+        // every unassessed user as non-compliant.
+        if (record.timestamp == 0) {
+            return false;
+        }
+
+        if (record.status != ComplianceStatus.Compliant) {
+            return true;
+        }
+
+        return block.timestamp - record.timestamp > complianceCheckInterval;
     }
 
     /**
@@ -690,26 +713,32 @@ contract AdvancedCarbonCreditToken is
             riskAssessmentInterval;
     }
 
-    // Required overrides
-    function _beforeTokenTransfer(
+    // Required override for OpenZeppelin v5's unified transfer hook
+    // (replaces the old _beforeTokenTransfer hook used in OZ v4).
+    function _update(
         address from,
         address to,
-        uint256 amount
+        uint256 value
     ) internal override(ERC20, ERC20Pausable) {
-        super._beforeTokenTransfer(from, to, amount);
+        super._update(from, to, value);
     }
 
     /**
-     * @dev Emergency withdrawal function (only admin)
+     * @dev Emergency withdrawal function (only admin). Rescues ETH or ERC20
+     * tokens accidentally sent to this contract. Uses SafeERC20 and a raw
+     * call (rather than the gas-limited `transfer`) so rescues work even
+     * for non-standard tokens or contract-wallet recipients.
      */
     function emergencyWithdraw(
-        address token,
+        address tokenAddress,
         uint256 amount
-    ) external onlyRole(ADMIN_ROLE) {
-        if (token == address(0)) {
-            payable(msg.sender).transfer(amount);
+    ) external onlyRole(ADMIN_ROLE) nonReentrant {
+        require(amount > 0, "Amount must be positive");
+        if (tokenAddress == address(0)) {
+            (bool success, ) = payable(msg.sender).call{value: amount}("");
+            require(success, "ETH withdrawal failed");
         } else {
-            IERC20(token).transfer(msg.sender, amount);
+            IERC20(tokenAddress).safeTransfer(msg.sender, amount);
         }
     }
 
