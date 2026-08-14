@@ -81,10 +81,34 @@ jobs:
           cache-dependency-path: code/blockchain/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Compile contracts
         run: npx truffle compile
+
+      - name: Start Ganache
+        run: |
+          npx ganache \
+            --host 127.0.0.1 \
+            --port 8545 \
+            > ganache.log 2>&1 &
+
+      - name: Wait for Ganache
+        run: |
+          for i in {1..30}; do
+            if curl -s -X POST \
+              -H "Content-Type: application/json" \
+              --data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' \
+              http://127.0.0.1:8545 > /dev/null; then
+              echo "Ganache is ready."
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "Ganache failed to start."
+          cat ganache.log
+          exit 1
 
       - name: Run contract test suite
         run: |
@@ -107,6 +131,14 @@ jobs:
         with:
           name: contract-build-artifacts
           path: code/blockchain/build/contracts/
+          retention-days: 7
+
+      - name: Upload Ganache log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ganache-log
+          path: code/blockchain/ganache.log
           retention-days: 7
 
   # ============================================================
