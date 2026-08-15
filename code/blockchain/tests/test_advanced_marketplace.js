@@ -171,7 +171,25 @@ contract("AdvancedMarketplace", (accounts) => {
       );
 
       assert.isTrue(receipt.logs.some((l) => l.event === "TradeExecuted"));
-      assert.equal((await carbonToken.balanceOf(buyer)).toString(), amount);
+
+      // Settlement moves the carbon tokens via AdvancedCarbonCreditToken's
+      // transferFrom, which (like transfer()) always deducts the token's
+      // own transferFeeRate before crediting the recipient - see
+      // "transfer fees" in test_advanced_carbon_credit_token.js. So the
+      // buyer nets the traded amount minus that fee, not the full amount.
+      const transferFeeRate = web3.utils.toBN(
+        await carbonToken.transferFeeRate(),
+      );
+      const tokenFee = web3.utils
+        .toBN(amount)
+        .mul(transferFeeRate)
+        .div(web3.utils.toBN("10000"));
+      const expectedBuyerBalance = web3.utils.toBN(amount).sub(tokenFee);
+
+      assert.equal(
+        (await carbonToken.balanceOf(buyer)).toString(),
+        expectedBuyerBalance.toString(),
+      );
 
       const marketData = await marketplace.getMarketData();
       assert.equal(marketData.lastPrice.toString(), price);

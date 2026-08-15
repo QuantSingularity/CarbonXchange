@@ -33,9 +33,14 @@ contract("CarbonCreditToken", (accounts) => {
       const receipt = await token.mint(alice, amount, { from: owner });
 
       assert.equal((await token.balanceOf(alice)).toString(), amount);
-      assert.equal(receipt.logs[0].event, "CreditsMinted");
-      assert.equal(receipt.logs[0].args.to, alice);
-      assert.equal(receipt.logs[0].args.amount.toString(), amount);
+
+      // mint() first triggers ERC20's own Transfer event via _mint(), then
+      // emits our custom CreditsMinted event, so look it up by name instead
+      // of assuming it's the first log.
+      const mintedLog = receipt.logs.find((l) => l.event === "CreditsMinted");
+      assert.isDefined(mintedLog, "expected a CreditsMinted event");
+      assert.equal(mintedLog.args.to, alice);
+      assert.equal(mintedLog.args.amount.toString(), amount);
     });
 
     it("rejects mint calls from a non-owner", async () => {
