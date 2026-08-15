@@ -19,6 +19,7 @@
     "chai": "^4.4.1",
     "dotenv": "^16.4.5",
     "mocha-junit-reporter": "^2.2.1",
+    "ganache": "7.9.1",
     "solc": "^0.8.24",
     "truffle": "^5.11.5"
   },

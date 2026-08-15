@@ -80,17 +80,35 @@ jobs:
           cache: "npm"
           cache-dependency-path: code/blockchain/package-lock.json
 
+      # NOTE: `npm ci` fails hard here with EBADPLATFORM on fsevents@2.3.2
+      # (a macOS-only optional transitive dependency) - npm ci enforces
+      # strict lockfile fidelity and doesn't skip it gracefully on Linux
+      # runners the way `npm install` does. Use `npm install` for this
+      # package specifically.
       - name: Install dependencies
         run: npm install
 
       - name: Compile contracts
         run: npx truffle compile
 
+      # truffle-config.js defines an explicit `development` network
+      # (127.0.0.1:8545), so `truffle test` always tries to connect to a
+      # real node there rather than auto-launching its own ephemeral
+      # chain - Ganache has to be started ourselves.
+      #
+      # `ganache` is pinned as an explicit devDependency (matching the
+      # version Truffle itself bundles) so `npx ganache` always resolves
+      # to that local, known-good copy instead of anything ambiguous.
+      # Explicit wallet sizing/balance/gas limit are defensive measures
+      # against the process running out of test ETH mid-suite.
       - name: Start Ganache
         run: |
           npx ganache \
             --host 127.0.0.1 \
             --port 8545 \
+            --wallet.totalAccounts 10 \
+            --wallet.defaultBalance 10000 \
+            --miner.blockGasLimit 30000000 \
             > ganache.log 2>&1 &
 
       - name: Wait for Ganache
