@@ -77,8 +77,6 @@ CarbonXchange/
 
 This module is not imported anywhere in the backend, so there is currently no live prediction endpoint at all.
 
-Not part of this project, despite appearing in earlier drafts of this document: satellite imagery analysis, computer vision, NLP-based document verification, and automated fraud detection (no such code exists anywhere in the repo); ERC-1155 tokens (the tokens are ERC20); Hardhat (the blockchain project uses Truffle and Ganache); Chainlink oracles; MongoDB, Express, and NestJS; a wallet connection or client-side web3 library (blockchain writes go through the backend's own signing key, not a connected user wallet); D3.js (installed with type bindings but never imported; Recharts is the chart library actually in use); Celery (installed but never instantiated); and OAuth2.
-
 ## Technology Stack
 
 | Area              | Technology                                                                                                     |
@@ -94,8 +92,6 @@ Not part of this project, despite appearing in earlier drafts of this document: 
 | Infrastructure    | Docker, Docker Compose, Kubernetes, Terraform (modular AWS network/security/compute/database/storage), Ansible |
 | CI/CD             | GitHub Actions                                                                                                 |
 | Testing           | pytest (backend), Truffle/Mocha against Ganache (contracts), Vitest (web, configured but no test files yet)    |
-
-Not part of this project, despite being common in this space: MongoDB, NestJS, Express, OAuth2, Chainlink, Prometheus and Grafana (security-group and network-policy rules reserve ports for them, but no deployment manifests are included), and Celery.
 
 ## Architecture
 
