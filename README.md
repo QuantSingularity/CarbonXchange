@@ -1,26 +1,25 @@
 # CarbonXchange
 
-![CI/CD Status](https://img.shields.io/github/actions/workflow/status/quantsingularity/CarbonXchange/cicd.yml?branch=main&label=CI/CD&logo=github)
-[![Test Coverage](https://img.shields.io/badge/coverage-81%25-brightgreen)](https://github.com/quantsingularity/CarbonXchange/actions)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![CI/CD Status](https://img.shields.io/github/actions/workflow/status/quantsingularity/CarbonXchange/cicd.yml?branch=main&label=CI%2FCD&logo=github)
 
 ## Blockchain-Based Carbon Credit Trading Platform
 
-CarbonXchange is an innovative platform that leverages blockchain technology and artificial intelligence to revolutionize carbon credit trading, making it more transparent, efficient, and accessible for businesses and individuals.
+CarbonXchange is a carbon credit trading platform: a Flask backend that registers and verifies offset projects, issues, transfers, and retires credits on-chain, and runs a marketplace, paired with a React web dashboard and a React Native (Expo) mobile app. A small scikit-learn forecasting library sits alongside the application as a standalone, untied research module.
 
 <div align="center">
-  <img src="docs/images/homepage.bmp" alt="CarbonXchange HomePage" width="80%">
+  <img src="docs/images/homepage.bmp" alt="CarbonXchange HomePage" width="100%">
 </div>
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Project Structure](#project-structure)
-- [Key Features](#key-features)
+- [Feature Status](#feature-status)
 - [Technology Stack](#technology-stack)
 - [Architecture](#architecture)
 - [Installation and Setup](#installation-and-setup)
-- [Usage](#usage)
+- [Running the Stack](#running-the-stack)
+- [API Surface](#api-surface)
 - [Testing](#testing)
 - [CI/CD Pipeline](#cicd-pipeline)
 - [Documentation](#documentation)
@@ -29,317 +28,222 @@ CarbonXchange is an innovative platform that leverages blockchain technology and
 
 ## Overview
 
-CarbonXchange is a decentralized platform that transforms how carbon credits are verified, traded, and retired. By combining blockchain's immutability with AI-powered verification, the platform ensures transparency and trust in the carbon offset market while making it accessible to businesses of all sizes and environmentally conscious individuals.
+CarbonXchange demonstrates a carbon credit workflow across a real, runnable codebase. The application tier (backend, smart contracts, and two clients) is wired and covered by tests, with the backend genuinely reading and writing to the deployed contracts through web3.py rather than simulating on-chain state. A small scikit-learn forecasting library sits alongside it but is not called by any live endpoint.
 
 ## Project Structure
 
-The project is organized into several main components:
-
 ```
 CarbonXchange/
-├── code/                   # Core backend logic, services, and shared utilities
-├── docs/                   # Project documentation
-├── infrastructure/         # DevOps, deployment, and infra-related code
-├── mobile-frontend/        # Mobile application
-├── web-frontend/           # Web dashboard
-├── scripts/                # Automation, setup, and utility scripts
-├── LICENSE                 # License information
-└── README.md               # Project overview and instructions
+├── code/
+│   ├── backend/               # Flask service: API, auth, services, DB
+│   │   ├── src/routes/        # auth, user, carbon_credits, trading, market,
+│   │   │                      # compliance, admin blueprints
+│   │   ├── src/services/      # blockchain_service (web3.py), auth, trading
+│   │   ├── src/models/        # SQLAlchemy models
+│   │   └── tests/             # Backend test suite (pytest)
+│   ├── blockchain/            # Truffle project
+│   │   ├── contracts/         # CarbonCreditToken, AdvancedCarbonCreditToken,
+│   │   │                      # Marketplace, AdvancedMarketplace
+│   │   └── tests/             # Truffle/Mocha test suite (runs against Ganache)
+│   └── ai_models/
+│       └── training_scripts/  # scikit-learn forecasting models (standalone)
+├── web-frontend/               # React (Vite) dashboard
+├── mobile-frontend/            # React Native + Expo app
+├── infrastructure/             # Docker, Kubernetes, Terraform, Ansible
+├── scripts/                    # Setup, orchestration, test, and deploy scripts
+├── docs/                       # Documentation (this directory)
+└── README.md
 ```
 
-## Key Features
+## Feature Status
 
-### Blockchain-Based Carbon Credit Tokenization
+### Application tier (wired and tested)
 
-| Feature                       | Description                                                        |
-| :---------------------------- | :----------------------------------------------------------------- |
-| **Transparent Verification**  | Immutable record of carbon credit origin and lifecycle             |
-| **Fractional Ownership**      | Ability to purchase partial carbon credits                         |
-| **Smart Contract Automation** | Automated issuance, trading, and retirement                        |
-| **Provenance Tracking**       | Complete history of each carbon credit from creation to retirement |
+| Component                | Details                                                                                                                                                                                                                                                         |
+| :----------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **API**                  | Flask backend exposing endpoints under `/api/*` for auth, users, carbon credits, trading, market data, compliance, and admin.                                                                                                                                   |
+| **Auth**                 | Password hashing, JWT access and refresh tokens (Flask-JWT-Extended), and TOTP-based MFA (pyotp). `SECRET_KEY` and `JWT_SECRET_KEY` default to a random per-process value if unset, and startup validation rejects the shipped placeholder value in production. |
+| **On-chain integration** | A real web3.py service that signs and sends transactions to register and verify offset projects, issue, transfer, and retire credits, and place marketplace orders, then reads back the resulting event logs.                                                   |
+| **Smart contracts**      | Truffle-managed Solidity contracts, tested against Ganache: an ERC20 carbon credit token (plus an "advanced" pausable variant) and marketplace contracts for listing and trading credits.                                                                       |
+| **Data layer**           | SQLAlchemy over PostgreSQL, with Redis for caching and rate limiting, and Alembic managing migrations.                                                                                                                                                          |
+| **Web dashboard**        | React and TypeScript app (Vite, Tailwind, shadcn/ui on Radix primitives) covering Home, Dashboard, Marketplace, Trade, Portfolio, Orders, Transactions, Project Detail, Compliance, Admin, Profile, and authentication screens.                                 |
+| **Mobile app**           | React Native (Expo) app covering the same functional areas through React Navigation's bottom-tab and stack navigators, with Redux Toolkit for state. The web dashboard does not use Redux; it relies on React Context instead.                                  |
 
-### AI-Powered Verification System
+### Research tier (library module)
 
-| Feature                        | Description                                                  |
-| :----------------------------- | :----------------------------------------------------------- |
-| **Project Validation**         | Automated assessment of carbon offset projects               |
-| **Satellite Imagery Analysis** | Remote monitoring of reforestation and conservation projects |
-| **Data Verification**          | Cross-referencing multiple data sources for accuracy         |
-| **Fraud Detection**            | Identifying suspicious patterns and double-counting          |
+| Component              | Details                                                                                                                                        |
+| :--------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Forecasting models** | scikit-learn regressors (Random Forest, Elastic Net, SVR, and an MLP) for price and credit-volume forecasting, trained via standalone scripts. |
 
-### Carbon Credit Marketplace
+This module is not imported anywhere in the backend, so there is currently no live prediction endpoint at all.
 
-| Feature                  | Description                                    |
-| :----------------------- | :--------------------------------------------- |
-| **Peer-to-Peer Trading** | Direct transactions between buyers and sellers |
-| **Auction Mechanism**    | Competitive bidding for carbon credits         |
-| **Price Discovery**      | Transparent market-based pricing               |
-| **Portfolio Management** | Tools for managing carbon credit investments   |
-
-### Impact Tracking & Reporting
-
-| Feature                  | Description                                                 |
-| :----------------------- | :---------------------------------------------------------- |
-| **Real-Time Metrics**    | Live tracking of carbon offset impact                       |
-| **Customizable Reports** | Generate reports for sustainability goals and compliance    |
-| **ESG Integration**      | Connect carbon credits to broader ESG initiatives           |
-| **API Access**           | Integrate carbon data into corporate sustainability systems |
+Not part of this project, despite appearing in earlier drafts of this document: satellite imagery analysis, computer vision, NLP-based document verification, and automated fraud detection (no such code exists anywhere in the repo); ERC-1155 tokens (the tokens are ERC20); Hardhat (the blockchain project uses Truffle and Ganache); Chainlink oracles; MongoDB, Express, and NestJS; a wallet connection or client-side web3 library (blockchain writes go through the backend's own signing key, not a connected user wallet); D3.js (installed with type bindings but never imported; Recharts is the chart library actually in use); Celery (installed but never instantiated); and OAuth2.
 
 ## Technology Stack
 
-### Blockchain & Smart Contracts
+| Area              | Technology                                                                                                     |
+| :---------------- | :------------------------------------------------------------------------------------------------------------- |
+| Blockchain        | Solidity, OpenZeppelin, Truffle, Ganache                                                                       |
+| Backend API       | Python 3.11+, Flask, Flask-SQLAlchemy, Flask-JWT-Extended, Flask-Limiter                                       |
+| Auth              | Werkzeug/passlib password hashing, PyJWT, pyotp (MFA)                                                          |
+| Blockchain client | web3.py, eth-account                                                                                           |
+| Data layer        | SQLAlchemy 2, Alembic, PostgreSQL, Redis                                                                       |
+| ML / Quant        | scikit-learn (Random Forest, Elastic Net, SVR, MLP) for offline forecasting                                    |
+| Web frontend      | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui (Radix primitives), Recharts, React Hook Form, Zod         |
+| Mobile frontend   | React Native, Expo, React Navigation, Redux Toolkit                                                            |
+| Infrastructure    | Docker, Docker Compose, Kubernetes, Terraform (modular AWS network/security/compute/database/storage), Ansible |
+| CI/CD             | GitHub Actions                                                                                                 |
+| Testing           | pytest (backend), Truffle/Mocha against Ganache (contracts), Vitest (web, configured but no test files yet)    |
 
-- **Blockchain**: Ethereum, Polygon
-- **Smart Contract Language**: Solidity
-- **Development Framework**: Hardhat, Truffle
-- **Token Standard**: ERC-1155 (for carbon credit tokens)
-- **Oracles**: Chainlink for external data
-
-### Backend
-
-- **Language**: Node.js, TypeScript
-- **Framework**: Express, NestJS
-- **Database**: PostgreSQL, MongoDB
-- **API Documentation**: Swagger
-- **Authentication**: JWT, OAuth2
-
-### Frontend
-
-- **Framework**: React with TypeScript
-- **State Management**: Redux Toolkit
-- **Styling**: Tailwind CSS, Styled Components
-- **Web3 Integration**: ethers.js, web3.js
-- **Data Visualization**: D3.js, Recharts
-
-### AI & Machine Learning
-
-- **Languages**: Python, TensorFlow
-- **Computer Vision**: For satellite imagery analysis
-- **Natural Language Processing**: For document verification
-- **Data Processing**: Pandas, NumPy
-- **Model Deployment**: TensorFlow Serving
-
-### Infrastructure
-
-- **Containerization**: Docker
-- **Orchestration**: Kubernetes
-- **CI/CD**: GitHub Actions
-- **Monitoring**: Prometheus, Grafana
-- **Infrastructure as Code**: Terraform
+Not part of this project, despite being common in this space: MongoDB, NestJS, Express, OAuth2, Chainlink, Prometheus and Grafana (security-group and network-policy rules reserve ports for them, but no deployment manifests are included), and Celery.
 
 ## Architecture
 
-The CarbonXchange platform follows a microservices architecture with these key components:
+```
+Clients
+  ├── web-frontend (React)               ── HTTP/JSON ──┐
+  └── mobile-frontend (React Native)     ── HTTP/JSON ──┤
+                                                        ▼
+Backend (Flask)
+  ├── Blueprints (/api/*)   auth, users, carbon-credits, trading,
+  │                         market, compliance, admin
+  ├── Services              blockchain (web3.py), auth, trading
+  └── Data layer             PostgreSQL (SQLAlchemy + Alembic), Redis
 
+Blockchain (Truffle / Solidity, tested against Ganache)
+  CarbonCreditToken (ERC20) · AdvancedCarbonCreditToken · Marketplace · AdvancedMarketplace
+
+Research library (code/ai_models/training_scripts)
+  scikit-learn forecasting models, trained offline, not called by the live API
 ```
-CarbonXchange/
-├── Blockchain Layer
-│   ├── Carbon Credit Token Contracts
-│   ├── Marketplace Contracts
-│   ├── Verification Registry
-│   └── Governance Contracts
-├── AI Verification Layer
-│   ├── Project Validation Service
-│   ├── Satellite Imagery Analysis
-│   ├── Document Processing
-│   └── Fraud Detection System
-├── Marketplace Layer
-│   ├── Order Matching Engine
-│   ├── Auction System
-│   ├── Price Discovery Mechanism
-│   └── Portfolio Management
-├── Analytics Layer
-│   ├── Impact Calculation
-│   ├── Reporting Engine
-│   ├── Data Visualization
-│   └── ESG Integration
-└── API Gateway
-    ├── Authentication & Authorization
-    ├── Rate Limiting
-    ├── Request Routing
-    └── External Integrations
-```
+
+See [docs/architecture.md](docs/architecture.md) for detail.
 
 ## Installation and Setup
 
-### Prerequisites
-
-- Node.js (v14+)
-- Python (v3.8+)
-- Docker and Docker Compose
-- Ethereum wallet (MetaMask recommended)
-
-### Quick Start with Setup Script
+Prerequisites: Python 3.11+, Node.js 18+, and (for the blockchain tests) Ganache.
 
 ```bash
-# Clone the repository
 git clone https://github.com/quantsingularity/CarbonXchange.git
 cd CarbonXchange
 
-# Run the setup script
-./setup_carbonxchange_env.sh
-
-# Start the application
-./run_carbonxchange.sh
-```
-
-### Manual Local Development Setup
-
-1. Install dependencies:
-
-```bash
-# Backend dependencies
-cd code/backend
-npm install
-
-# Frontend dependencies
-cd ../web-frontend
-npm install
-
-# AI service dependencies
-cd ../ai-service
-pip install -r requirements.txt
-```
-
-2. Set up environment variables:
-
-```bash
-cp .env.example .env
-# Edit .env with your configuration
-```
-
-3. Start the development environment:
-
-```bash
-docker-compose up -d
-```
-
-4. Deploy smart contracts to local blockchain:
-
-```bash
+# Blockchain
 cd code/blockchain
-npx hardhat run scripts/deploy.js --network localhost
+npm install
+
+# Backend
+cd ../backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# Web frontend
+cd ../../web-frontend
+npm install
+
+# Mobile frontend
+cd ../mobile-frontend
+npm install
 ```
+
+For an automated setup:
+
+```bash
+git clone https://github.com/quantsingularity/CarbonXchange.git
+cd CarbonXchange
+./scripts/dev_env/cx_setup_env.sh
+./scripts/orchestration/cx_run_dev.sh
+```
+
+Full, environment-specific instructions are in [docs/INSTALLATION.md](docs/INSTALLATION.md).
+
+## Running the Stack
+
+```bash
+# 1) Supporting services (from infrastructure/, Docker required)
+docker compose up -d database redis
+
+# 2) Local chain (from code/blockchain)
+npx ganache --host 127.0.0.1 --port 8545
+
+# 3) Deploy contracts to the local chain (from code/blockchain)
+npx truffle migrate --network development
+
+# 4) Backend (from code/backend, venv active)
+python src/main.py                 # serves http://0.0.0.0:5000
+
+# 5) Web dashboard (from web-frontend)
+npm run dev                        # http://localhost:5173 (Vite default)
+
+# 6) Mobile app (from mobile-frontend)
+npm start                          # press w for web, a for Android, i for iOS
+```
+
+See [docs/USAGE.md](docs/USAGE.md) and [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
+
+## API Surface
+
+Base URL `http://localhost:5000`.
+
+| Group          | Prefix                | Highlights                                                                   |
+| :------------- | :-------------------- | :--------------------------------------------------------------------------- |
+| Auth           | `/api/auth`           | `register`, `login`, `refresh`, `logout`, `me`, `verify-email`               |
+| Users          | `/api/users`          | list/create, `{id}`, `me`, `me/profile`                                      |
+| Carbon Credits | `/api/carbon-credits` | list/create, `{id}/retire`, `{id}/tokenize`, `projects`, `blockchain/status` |
+| Trading        | `/api/trading`        | `orders`, `orders/{id}/cancel`, `trades`, `portfolio`, `portfolio/holdings`  |
+| Market         | `/api/market`         | `data`, `ticker/{symbol}`, `prices`, `summary`, `depth/{symbol}`             |
+| Compliance     | `/api/compliance`     | `records`, `reports`, `reports/{id}/submit`, `status`, `aml/summary`         |
+| Admin          | `/api/admin`          | `users`, `users/{id}/status`, `users/{id}/unlock`, `system`                  |
+
+Full request and response shapes are in [docs/API.md](docs/API.md).
 
 ## Testing
 
-The project maintains comprehensive test coverage across all components to ensure reliability and security.
-
-### Test Coverage
-
-| Component           | Coverage | Status |
-| ------------------- | -------- | ------ |
-| Smart Contracts     | 90%      | ✅     |
-| Backend Services    | 83%      | ✅     |
-| AI Verification     | 78%      | ✅     |
-| Frontend Components | 75%      | ✅     |
-| Integration Tests   | 80%      | ✅     |
-| Overall             | 81%      | ✅     |
-
-### Smart Contract Tests
-
-| Test Type              | Description                |
-| :--------------------- | :------------------------- |
-| Unit tests             | For all contract functions |
-| Integration tests      | For contract interactions  |
-| Security tests         | Using Slither and Mythril  |
-| Gas optimization tests | To ensure efficiency       |
-
-### Backend Tests
-
-| Test Type                              | Description                            |
-| :------------------------------------- | :------------------------------------- |
-| API endpoint tests                     | To verify correct routing and response |
-| Service layer unit tests               | For core business logic                |
-| Database integration tests             | For data persistence and retrieval     |
-| Authentication and authorization tests | To ensure secure access control        |
-
-### AI Model Tests
-
-| Test Type                       | Description                          |
-| :------------------------------ | :----------------------------------- |
-| Model accuracy validation       | To ensure predictive power           |
-| Computer vision algorithm tests | For satellite imagery analysis       |
-| Document processing tests       | For data extraction and verification |
-| Fraud detection tests           | To assess security                   |
-
-### Frontend Tests
-
-| Test Type                  | Description                      |
-| :------------------------- | :------------------------------- |
-| Component tests            | With React Testing Library       |
-| Integration tests          | With Cypress for feature flows   |
-| End-to-end user flow tests | To verify complete user journeys |
-| Web3 integration tests     | For blockchain connectivity      |
-
-### Running Tests
-
 ```bash
-# Smart contract tests
-cd code/blockchain
-npx hardhat test
+# Smart contracts (from code/blockchain, with Ganache running)
+npx truffle test
 
-# Backend tests
-cd code/backend
-npm test
-
-# AI service tests
-cd code/ai-service
+# Backend (from code/backend)
 pytest
 
-# Frontend tests
-cd web-frontend
+# Web (from web-frontend)
 npm test
-
-# Run all tests
-./lint-all.sh test
 ```
 
-#### CI/CD Pipeline
+The backend suite covers the blockchain service, trading service, and the carbon-credits, compliance, and market routes. The Truffle suite covers each contract individually against a real Ganache instance. The web frontend has Vitest configured but no test files yet, and the mobile app's `__tests__` directory currently holds only a placeholder README rather than any tests, so neither is exercised in CI today.
 
-CarbonXchange uses GitHub Actions for continuous integration and deployment:
+## CI/CD Pipeline
 
-| Stage                | Control Area                    | Institutional-Grade Detail                                                              |
-| :------------------- | :------------------------------ | :-------------------------------------------------------------------------------------- |
-| **Formatting Check** | Change Triggers                 | Enforced on all `push` and `pull_request` events to `main` and `develop`                |
-|                      | Manual Oversight                | On-demand execution via controlled `workflow_dispatch`                                  |
-|                      | Source Integrity                | Full repository checkout with complete Git history for auditability                     |
-|                      | Python Runtime Standardization  | Python 3.10 with deterministic dependency caching                                       |
-|                      | Backend Code Hygiene            | `autoflake` to detect unused imports/variables using non-mutating diff-based validation |
-|                      | Backend Style Compliance        | `black --check` to enforce institutional formatting standards                           |
-|                      | Non-Intrusive Validation        | Temporary workspace comparison to prevent unauthorized source modification              |
-|                      | Node.js Runtime Control         | Node.js 18 with locked dependency installation via `npm ci`                             |
-|                      | Web Frontend Formatting Control | Prettier checks for web-facing assets                                                   |
-|                      | Mobile Frontend Formatting      | Prettier enforcement for mobile application codebases                                   |
-|                      | Documentation Governance        | Repository-wide Markdown formatting enforcement                                         |
-|                      | Infrastructure Configuration    | Prettier validation for YAML/YML infrastructure definitions                             |
-|                      | Compliance Gate                 | Any formatting deviation fails the pipeline and blocks merge                            |
+GitHub Actions (`.github/workflows/cicd.yml`) runs four jobs on push, pull request, and manual dispatch:
+
+| Job                  | Depends on          | What it does                                                                          |
+| :------------------- | :------------------ | :------------------------------------------------------------------------------------ |
+| Code Quality Checks  | -                   | Python formatter checks (autoflake, black) and a repository-wide Prettier check       |
+| Smart Contract Tests | Code Quality Checks | Compiles the contracts with Truffle, starts Ganache, and runs the contract test suite |
+| Backend Tests        | Code Quality Checks | Runs the pytest suite with coverage and uploads the coverage report as an artifact    |
+| Web-Frontend Build   | Code Quality Checks | Installs dependencies and produces the production web build (no test step)            |
+
+There is currently no CI job for the mobile app.
 
 ## Documentation
 
-| Document                    | Path                 | Description                                                          |
-| :-------------------------- | :------------------- | :------------------------------------------------------------------- |
-| **README**                  | `README.md`          | High-level overview, project scope, and repository entry point       |
-| **Installation Guide**      | `INSTALLATION.md`    | Step-by-step installation and environment setup                      |
-| **API Reference**           | `API.md`             | Detailed documentation for all API endpoints                         |
-| **CLI Reference**           | `CLI.md`             | Command-line interface usage, commands, and examples                 |
-| **User Guide**              | `USAGE.md`           | Comprehensive end-user guide, workflows, and examples                |
-| **Architecture Overview**   | `ARCHITECTURE.md`    | System architecture, components, and design rationale                |
-| **Configuration Guide**     | `CONFIGURATION.md`   | Configuration options, environment variables, and tuning             |
-| **Feature Matrix**          | `FEATURE_MATRIX.md`  | Feature coverage, capabilities, and roadmap alignment                |
-| **Smart Contracts**         | `SMART_CONTRACTS.md` | Smart contract architecture, interfaces, and security considerations |
-| **Contributing Guidelines** | `CONTRIBUTING.md`    | Contribution workflow, coding standards, and PR requirements         |
-| **Troubleshooting**         | `TROUBLESHOOTING.md` | Common issues, diagnostics, and remediation steps                    |
+| Document                                           | Contents                               |
+| :------------------------------------------------- | :------------------------------------- |
+| [docs/README.md](docs/README.md)                   | Documentation index                    |
+| [docs/architecture.md](docs/architecture.md)       | System architecture                    |
+| [docs/API.md](docs/API.md)                         | REST API reference                     |
+| [docs/INSTALLATION.md](docs/INSTALLATION.md)       | Setup for all components               |
+| [docs/CONFIGURATION.md](docs/CONFIGURATION.md)     | Environment variables and config       |
+| [docs/USAGE.md](docs/USAGE.md)                     | Running and using the platform         |
+| [docs/CLI.md](docs/CLI.md)                         | Helper scripts reference               |
+| [docs/FEATURE_MATRIX.md](docs/FEATURE_MATRIX.md)   | Feature status, implemented vs planned |
+| [docs/SMART_CONTRACTS.md](docs/SMART_CONTRACTS.md) | Contract architecture and interfaces   |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | Common issues and fixes                |
+| [docs/contributing.md](docs/contributing.md)       | Contribution guide                     |
+| [docs/examples/](docs/examples/)                   | Worked examples                        |
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+See [docs/contributing.md](docs/contributing.md).
 
 ## License
 
