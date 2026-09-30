@@ -1,6 +1,6 @@
 # ── Stage 1: dependency build ──────────────────────────────────────────────
 # The backend is a Python/Flask application (see code/backend/requirements.txt
-# and src/main.py) — this Dockerfile previously assumed a Node.js backend
+# and src/main.py) - this Dockerfile previously assumed a Node.js backend
 # (npm ci, dist/index.js), which doesn't exist anywhere in this project.
 FROM python:3.11-slim AS deps
 

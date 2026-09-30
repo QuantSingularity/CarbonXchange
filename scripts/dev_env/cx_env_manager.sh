@@ -221,7 +221,7 @@ setup_node() {
     fi
 
     # Install global npm packages for development tools
-    # Note: expo-cli is intentionally excluded — it's deprecated and the
+    # Note: expo-cli is intentionally excluded - it's deprecated and the
     # mobile app is run via the local "expo" package (npx expo / npm start).
     log "INFO" "Installing required global npm packages (truffle, ganache, eslint, prettier, solhint, mocha-junit-reporter)..."
     # Using npm install -g without sudo first, then with sudo as fallback

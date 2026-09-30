@@ -167,7 +167,7 @@ const MarketplaceScreen = () => {
                     <Text style={styles.priceText}>
                       {item.estimated_credit_price
                         ? formatCurrency(item.estimated_credit_price)
-                        : "—"}
+                        : "-"}
                     </Text>
                   </View>
                   <View style={{ alignItems: "flex-end" }}>

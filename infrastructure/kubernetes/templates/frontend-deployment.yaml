@@ -78,7 +78,7 @@ spec:
             requests:
               cpu: "{{ .Values.frontend.resources.requests.cpu }}"
               memory: "{{ .Values.frontend.resources.requests.memory }}"
-          # This is a static Vite SPA served by nginx — there's no
+          # This is a static Vite SPA served by nginx - there's no
           # server-side process reading env vars at runtime. The API URL is
           # baked into the build at image-build time via the VITE_API_URL
           # build ARG (see infrastructure/docker/Dockerfile.frontend), not

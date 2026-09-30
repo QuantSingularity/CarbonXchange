@@ -17,7 +17,7 @@ instance_type     = "t3.small"
 db_instance_class = "db.t3.micro"
 db_name           = "carbonxchangedb"
 db_username       = "appuser"
-# db_password intentionally omitted — set via env var TF_VAR_db_password
+# db_password intentionally omitted - set via env var TF_VAR_db_password
 
 default_tags = {
   Terraform   = "true"

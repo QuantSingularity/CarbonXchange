@@ -107,7 +107,7 @@ const AdminScreen = () => {
       <View style={styles.statsGrid}>
         <StatCard
           label="Total users"
-          value={system ? formatNumber(system.users.total, 0) : "—"}
+          value={system ? formatNumber(system.users.total, 0) : "-"}
           hint={
             system
               ? `${formatNumber(system.users.active, 0)} active`
@@ -116,15 +116,15 @@ const AdminScreen = () => {
         />
         <StatCard
           label="Orders"
-          value={system ? formatNumber(system.trading.orders, 0) : "—"}
+          value={system ? formatNumber(system.trading.orders, 0) : "-"}
         />
         <StatCard
           label="Trades"
-          value={system ? formatNumber(system.trading.trades, 0) : "—"}
+          value={system ? formatNumber(system.trading.trades, 0) : "-"}
         />
         <StatCard
           label="KYC approval"
-          value={aml ? formatPercent(aml.kyc_approval_rate) : "—"}
+          value={aml ? formatPercent(aml.kyc_approval_rate) : "-"}
         />
       </View>
 

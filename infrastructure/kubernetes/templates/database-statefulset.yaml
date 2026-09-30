@@ -35,7 +35,7 @@ spec:
       containers:
         - name: "{{ .Values.appName }}-database"
           # The backend depends on psycopg2-binary (PostgreSQL) and
-          # code/backend/init.sql is written for PostgreSQL — it has no
+          # code/backend/init.sql is written for PostgreSQL - it has no
           # MySQL client library at all.
           image: "{{ .Values.database.image.repository }}:{{ .Values.database.image.tag }}"
           imagePullPolicy: "{{ .Values.database.image.pullPolicy }}"

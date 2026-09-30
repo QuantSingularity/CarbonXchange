@@ -142,7 +142,7 @@ const DashboardScreen = () => {
         />
         <StatCard
           label="7-day avg. price"
-          value={marketStats ? formatCurrency(marketStats.average_price) : "—"}
+          value={marketStats ? formatCurrency(marketStats.average_price) : "-"}
           hint={
             marketStats
               ? `${formatNumber(marketStats.trade_count, 0)} trades`

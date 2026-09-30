@@ -157,7 +157,7 @@ run_web_frontend_tests() {
     local exit_code=0
     (
         cd "$WEB_FRONTEND_DIR"
-        # This is a Vitest project (not Jest) — use its real reporter flags
+        # This is a Vitest project (not Jest) - use its real reporter flags
         # and the "test:run" script, which guarantees a single non-watch run.
         npm run test:run -- --reporter=json --outputFile="$report_dir/$test_type-tests.json"
     ) || exit_code=$?
@@ -303,7 +303,7 @@ generate_coverage_report() {
         log "INFO" "Generating web frontend coverage report..."
         (
             cd "$WEB_FRONTEND_DIR"
-            # This is a Vitest project — coverage directory is a nested
+            # This is a Vitest project - coverage directory is a nested
             # option flag, not Jest's --coverageDirectory.
             npm run test:coverage -- --coverage.reportsDirectory="$coverage_dir/web-frontend"
         ) || log "WARNING" "Web frontend coverage generation failed."

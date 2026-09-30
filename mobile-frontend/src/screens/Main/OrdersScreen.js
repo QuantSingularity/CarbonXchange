@@ -21,7 +21,7 @@ import {
 } from "../../utils/format";
 import theme from "../../styles/theme";
 
-// Mirrors the backend's Order.is_active property exactly — "pending"
+// Mirrors the backend's Order.is_active property exactly - "pending"
 // orders haven't reached the book yet and the API rejects cancelling them.
 const cancellable = new Set(["open", "partially_filled"]);
 

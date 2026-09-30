@@ -1,4 +1,4 @@
-# CarbonXchange — Mobile Frontend
+# CarbonXchange - Mobile Frontend
 
 React Native (Expo SDK 52) companion app for the CarbonXchange trading
 platform, sharing the same "atmospheric ledger" design language as the web
@@ -7,15 +7,15 @@ prices) and talking to the same Flask backend in `code/backend`.
 
 ## Flow
 
-The app always opens on **Welcome** — a lightweight version of the web
-homepage — before any sign-in. From there people sign in or open an
+The app always opens on **Welcome** - a lightweight version of the web
+homepage - before any sign-in. From there people sign in or open an
 account; once authenticated, the app switches to a 5-tab main navigator:
 
-- **Dashboard** — portfolio summary, compliance banner, recent orders/holdings
-- **Marketplace** — browse verified projects → project detail → credit batches
-- **Trade** — symbol lookup, live ticker/depth/recent trades, order entry
-- **Portfolio** — holdings, P&L, allocation chart
-- **More** — Order history, Transactions, Compliance, Profile & settings, and (for admin/compliance/auditor roles) an Admin console
+- **Dashboard** - portfolio summary, compliance banner, recent orders/holdings
+- **Marketplace** - browse verified projects → project detail → credit batches
+- **Trade** - symbol lookup, live ticker/depth/recent trades, order entry
+- **Portfolio** - holdings, P&L, allocation chart
+- **More** - Order history, Transactions, Compliance, Profile & settings, and (for admin/compliance/auditor roles) an Admin console
 
 ## Backend integration
 
@@ -46,7 +46,7 @@ npm run lint
 ## Known limitations
 
 - The previous test suite under `src/__tests__` targeted screens that no
-  longer exist and has been removed rather than left failing — see
+  longer exist and has been removed rather than left failing - see
   `src/__tests__/README.md`.
 - The app uses a single light theme (matching the web app's light mode)
   rather than a full dark-mode toggle, to keep the two apps visually

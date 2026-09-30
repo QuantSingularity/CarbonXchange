@@ -1,6 +1,6 @@
 # This file is dropped into /etc/nginx/conf.d/, which is included inside
 # the http {} block of the main nginx.conf (standard RHEL/CentOS nginx
-# packaging) — so directives here, outside any server{} block, are at
+# packaging) - so directives here, outside any server{} block, are at
 # http-level scope. limit_req_zone specifically MUST be at this level;
 # nginx rejects it inside a server{} block.
 limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;

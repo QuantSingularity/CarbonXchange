@@ -69,7 +69,7 @@ const TradeHistoryScreen = () => {
       renderItem={({ item }) => (
         <Card style={styles.card}>
           <View style={styles.topRow}>
-            <Text style={styles.creditType}>{item.credit_type || "—"}</Text>
+            <Text style={styles.creditType}>{item.credit_type || "-"}</Text>
             <StatusBadge status={item.status} />
           </View>
           <Text style={theme.typography.caption}>{item.trade_id}</Text>

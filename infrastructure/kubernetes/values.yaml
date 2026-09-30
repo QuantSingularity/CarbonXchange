@@ -1,7 +1,7 @@
 # Default values for the carbonxchange chart.
 # This is the chart-required default values.yaml (Helm looks for this file
 # at the chart root). It mirrors environments/dev/values.yaml as a safe
-# baseline — for an actual deployment, layer the environment-specific file
+# baseline - for an actual deployment, layer the environment-specific file
 # on top, e.g.:
 #   helm install carbonxchange . -f environments/staging/values.yaml
 #   helm install carbonxchange . -f environments/prod/values.yaml

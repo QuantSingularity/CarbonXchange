@@ -3,12 +3,12 @@ import { Dimensions, Platform } from "react-native";
 const { width, height } = Dimensions.get("window");
 
 /**
- * CarbonXchange design tokens — mirrors the web app's "atmospheric ledger"
+ * CarbonXchange design tokens - mirrors the web app's "atmospheric ledger"
  * palette (deep spruce green, warm ember accent, mist paper background)
  * so the mobile and web apps read as one product.
  */
 const colors = {
-  primary: "#1E5B48", // Spruce — brand
+  primary: "#1E5B48", // Spruce - brand
   primaryLight: "#3E8368",
   primaryMuted: "#E3EDE7",
   primaryForeground: "#F5FAF7",
@@ -24,7 +24,7 @@ const colors = {
   border: "#DEE3D9",
   divider: "#E7EAE2",
 
-  accent: "#C4622D", // Ember — emphasis / sell
+  accent: "#C4622D", // Ember - emphasis / sell
   gain: "#1F7A52",
   loss: "#C4622D",
   warning: "#B8862E",
@@ -32,7 +32,7 @@ const colors = {
 
   disabled: "#C6CCC1",
 
-  // The trading rail — always dark, an instrument panel independent of theme
+  // The trading rail - always dark, an instrument panel independent of theme
   rail: "#0D1512",
   railSurface: "#142019",
   railForeground: "#EAF0EA",

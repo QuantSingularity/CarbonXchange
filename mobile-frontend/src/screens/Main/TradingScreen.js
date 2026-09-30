@@ -154,11 +154,11 @@ const TradingScreen = () => {
                 <View style={styles.tickerMetaRow}>
                   <Text style={styles.tickerMeta}>
                     24h high{" "}
-                    {ticker.high_24h ? formatCurrency(ticker.high_24h) : "—"}
+                    {ticker.high_24h ? formatCurrency(ticker.high_24h) : "-"}
                   </Text>
                   <Text style={styles.tickerMeta}>
                     24h low{" "}
-                    {ticker.low_24h ? formatCurrency(ticker.low_24h) : "—"}
+                    {ticker.low_24h ? formatCurrency(ticker.low_24h) : "-"}
                   </Text>
                 </View>
               )}

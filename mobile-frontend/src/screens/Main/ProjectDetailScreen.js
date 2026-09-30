@@ -115,7 +115,7 @@ const ProjectDetailScreen = () => {
           <Text style={styles.statValue}>
             {project.estimated_credit_price
               ? formatCurrency(project.estimated_credit_price)
-              : "—"}
+              : "-"}
           </Text>
         </Card>
       </View>
@@ -141,12 +141,12 @@ const ProjectDetailScreen = () => {
         </View>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Methodology</Text>
-          <Text style={styles.detailValue}>{project.methodology || "—"}</Text>
+          <Text style={styles.detailValue}>{project.methodology || "-"}</Text>
         </View>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Developer</Text>
           <Text style={styles.detailValue}>
-            {project.developer_name || "—"}
+            {project.developer_name || "-"}
           </Text>
         </View>
         <View style={styles.detailRow}>
@@ -193,7 +193,7 @@ const ProjectDetailScreen = () => {
               </View>
               <View style={{ alignItems: "flex-end" }}>
                 <Text style={styles.creditPrice}>
-                  {c.market_price ? formatCurrency(c.market_price) : "—"}
+                  {c.market_price ? formatCurrency(c.market_price) : "-"}
                 </Text>
                 {c.is_available && (
                   <Button

@@ -80,7 +80,7 @@ generate_api_docs() {
         # Generate API documentation from docstrings using pdoc3
         if command_exists pdoc3; then
             log "INFO" "Generating API documentation from docstrings using pdoc3..."
-            # Target src/ specifically — it's the actual importable package
+            # Target src/ specifically - it's the actual importable package
             # (has __init__.py); the backend root also contains venv,
             # instance, logs, uploads, and static, which aren't Python source.
             pdoc3 --html --output-dir "$api_docs_dir/docstrings" "$BACKEND_DIR/src" || log "WARNING" "pdoc3 failed to generate documentation."
@@ -190,7 +190,7 @@ EOF
         # Check test coverage if npm is available
         if command_exists npm; then
             log "INFO" "Running web frontend tests for coverage report..."
-            # This is a Vitest project — use its real reporter flags via the
+            # This is a Vitest project - use its real reporter flags via the
             # project's own test:coverage script.
             if (cd "$WEB_FRONTEND_DIR" && npm run test:coverage -- --coverage.reporter=json-summary > /dev/null 2>&1); then
                 local coverage_file="$WEB_FRONTEND_DIR/coverage/coverage-summary.json"

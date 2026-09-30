@@ -64,7 +64,7 @@ const HeroChart = () => (
   </Svg>
 );
 
-/** The app's true landing screen — shown before any sign-in. */
+/** The app's true landing screen - shown before any sign-in. */
 const WelcomeScreen = () => {
   const navigation = useNavigation();
 

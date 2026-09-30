@@ -60,7 +60,7 @@ terraform plan -var-file="terraform.tfvars" -out=plan.out
 ### 2. Kubernetes Setup & Validation
 
 This is a Helm chart (`Chart.yaml` + `templates/` + per-environment
-`values.yaml`), not a set of raw manifests — the `{{ .Values.x }}`
+`values.yaml`), not a set of raw manifests - the `{{ .Values.x }}`
 placeholders throughout `templates/` require Helm to render before
 `kubectl` can do anything with them.
 
@@ -72,7 +72,7 @@ cp environments/dev/values.yaml.example environments/dev/values.yaml
 # Edit values.yaml with your secrets (DO NOT commit this file)
 
 # Validate YAML syntax of the source templates (won't catch unresolved
-# {{ }} expressions — see helm lint/template below for that)
+# {{ }} expressions - see helm lint/template below for that)
 yamllint -c ../.yamllint .
 
 # Lint the chart itself

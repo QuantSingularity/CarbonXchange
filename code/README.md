@@ -101,7 +101,7 @@ CarbonXchange/code/
    flask run --host=0.0.0.0 --port=5000
    ```
 
-3. **Blockchain Setup** (Optional — this is a Truffle project, not Hardhat)
+3. **Blockchain Setup** (Optional - this is a Truffle project, not Hardhat)
 
    ```bash
    cd ../blockchain
@@ -159,7 +159,7 @@ CarbonXchange/code/
 cd backend
 pytest tests/ -v --cov=src --cov-report=html
 
-# Frontend Tests (>85% coverage) — this is a Vitest project, not Jest
+# Frontend Tests (>85% coverage) - this is a Vitest project, not Jest
 cd web-frontend
 npm run test:coverage
 

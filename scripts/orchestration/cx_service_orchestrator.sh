@@ -240,7 +240,7 @@ start_web_frontend() {
     log "INFO" "Starting web frontend on port $WEB_FRONTEND_PORT..."
     (
         cd "$WEB_FRONTEND_DIR"
-        # This is a Vite project — the dev script is "dev", not "start".
+        # This is a Vite project - the dev script is "dev", not "start".
         npm run dev -- --port "$WEB_FRONTEND_PORT" --strictPort > "$LOG_DIR/web_frontend.log" 2>&1 &
         echo $! > "$PID_DIR/web_frontend.pid"
     )

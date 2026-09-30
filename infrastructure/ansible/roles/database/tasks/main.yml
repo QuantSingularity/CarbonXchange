@@ -1,7 +1,7 @@
 ---
 # roles/database/tasks/main.yml
 # The backend requires PostgreSQL (psycopg2-binary driver, Postgres-specific
-# init.sql) — it has no MySQL/MariaDB client library at all.
+# init.sql) - it has no MySQL/MariaDB client library at all.
 - name: Install database packages
   ansible.builtin.dnf:
     name:

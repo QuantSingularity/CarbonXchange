@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import theme from "../styles/theme";
 
 function humanize(value) {
-  if (!value) return "—";
+  if (!value) return "-";
   return value
     .toLowerCase()
     .split("_")
