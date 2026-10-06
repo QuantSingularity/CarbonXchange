@@ -103,6 +103,11 @@ apiClient.interceptors.response.use(
   },
 );
 
+export function apiErrorCode(error) {
+  if (axios.isAxiosError(error)) return error.response?.data?.code;
+  return undefined;
+}
+
 export function apiErrorMessage(
   error,
   fallback = "Something went wrong. Please try again.",
@@ -281,6 +286,28 @@ export const marketApi = {
   },
   async recentTrades(params = {}) {
     const { data } = await apiClient.get("/market/trades/recent", { params });
+    return data;
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/* AI forecasting                                                      */
+/* ------------------------------------------------------------------ */
+
+export const forecastApi = {
+  async status() {
+    const { data } = await apiClient.get("/forecast/status");
+    return data;
+  },
+  async price(symbol, params = {}) {
+    const { data } = await apiClient.get(
+      `/forecast/price/${encodeURIComponent(symbol)}`,
+      { params },
+    );
+    return data;
+  },
+  async demand(payload) {
+    const { data } = await apiClient.post("/forecast/demand", payload);
     return data;
   },
 };

@@ -27,11 +27,15 @@ CarbonXchange/code/
 │   ├── scripts/                           # Deployment and management scripts
 │   └── tests/                             # Comprehensive contract tests
 └── ai_models/                             # Machine learning models
-    ├── training_scripts/                  # Advanced model training code
-    │   ├── train_forecasting_model.py     # Original forecasting
-    │   └── advanced_forecasting_model.py  # Multi-algorithm
-    ├── models/                            # Trained model files
-    └── data/                              # Training and validation data
+    ├── config.py                          # Paths and model constants
+    ├── features.py                        # Leak-free feature engineering
+    ├── forecasting.py                     # Multi-model ensemble training
+    ├── inference.py                       # Multi-step forecasts with intervals
+    ├── demand.py                          # Demand model
+    ├── training_scripts/                  # Training and preprocessing CLIs
+    ├── tests/                             # Model test suite
+    ├── models/                            # Trained artifacts (generated)
+    └── data/                              # Training data (generated or supplied)
 ```
 
 ## Technology Stack
@@ -135,6 +139,15 @@ CarbonXchange/code/
 - **KYC/AML Integration**: Automated identity verification, sanctions screening, PEP checks
 - **Audit Trails**: Comprehensive logging of all trading activities with immutable records
 - **Regulatory Reporting**: Automated generation of MiFID II, EMIR, and other compliance reports
+
+### AI Forecasting API
+
+- `GET /api/forecast/status` - model readiness and metrics
+- `GET /api/forecast/price/<symbol>?horizon=7&model=ensemble` - price forecast with 95% interval
+- `POST /api/forecast/demand` - demand estimate from price, volume and season
+- `POST /api/forecast/train` - admin only, trains from market history or synthetic data
+
+Train from the command line with `python ai_models/training_scripts/advanced_forecasting_model.py` run from the `code` directory.
 
 ### AI-Powered Analytics
 

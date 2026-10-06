@@ -1,15 +1,9 @@
-from typing import Any
+import sys
+from pathlib import Path
 
-import pandas as pd
-from sklearn.preprocessing import StandardScaler
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from ai_models.training.preprocess import main
 
-def preprocess_data(filepath: Any) -> Any:
-    df = pd.read_csv(filepath)
-    df = df.fillna(df.mean())
-    df["price_volume_ratio"] = df["historical_price"] / df["trading_volume"]
-    scaler = StandardScaler()
-    scaled_features = scaler.fit_transform(
-        df[["historical_price", "trading_volume", "price_volume_ratio"]]
-    )
-    return pd.DataFrame(scaled_features, columns=["price", "volume", "ratio"])
+if __name__ == "__main__":
+    raise SystemExit(main())

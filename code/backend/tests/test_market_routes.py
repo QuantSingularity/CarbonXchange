@@ -315,6 +315,13 @@ class TestOrderBookDepth:
         assert "symbol" in data
         assert "timestamp" in data
 
+    def test_depth_filters_by_symbol(self, client: Any, sample_order: Any) -> None:
+        matching = client.get("/api/market/depth/VCS").get_json()
+        assert any(b["price"] == 45.0 for b in matching["bids"])
+        other = client.get("/api/market/depth/NO-SUCH-TYPE").get_json()
+        assert other["bids"] == []
+        assert other["asks"] == []
+
     def test_depth_levels_respected(self, client: Any, sample_order: Any) -> None:
         resp = client.get("/api/market/depth/VCS-2023?levels=5")
         assert resp.status_code == 200

@@ -11,8 +11,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 from scipy import stats
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import StandardScaler
 from sqlalchemy import desc
 
 from ..models import db
@@ -382,9 +380,50 @@ class PricingService:
         vintage_year: Optional[int] = None,
         forecast_days: int = 30,
     ) -> Dict[str, Any]:
-        """
-        Generate price forecast using machine learning models
-        """
+        try:
+            from .forecasting_service import ForecastingService
+
+            service = ForecastingService()
+            symbol = credit_type
+            if service.is_ready():
+                series = service.market_data.get_daily_series(symbol, 365)
+                if len(series) >= service.min_history:
+                    result = service.forecast_price(symbol, forecast_days)
+                    if "error" not in result:
+                        return self._to_legacy_forecast(result)
+        except Exception as e:
+            logger.warning(f"AI forecast unavailable, using trend fallback: {e}")
+        return self._trend_forecast(
+            project_id, credit_type, vintage_year, forecast_days
+        )
+
+    @staticmethod
+    def _to_legacy_forecast(result: Dict[str, Any]) -> Dict[str, Any]:
+        points = result["predictions"]
+        prices = [point["predicted_price"] for point in points]
+        return {
+            "engine": "ai_ensemble",
+            "current_price": result["current_price"],
+            "forecast": {
+                "dates": [point["timestamp"] for point in points],
+                "prices": prices,
+                "lower": [point["lower"] for point in points],
+                "upper": [point["upper"] for point in points],
+                "mean": float(np.mean(prices)),
+                "std": float(np.std(prices)),
+                "trend": result["trend"],
+            },
+            "model_performance": result["model_info"],
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+    def _trend_forecast(
+        self,
+        project_id: Optional[int],
+        credit_type: Optional[str],
+        vintage_year: Optional[int],
+        forecast_days: int,
+    ) -> Dict[str, Any]:
         try:
             historical_data = self._get_price_history(
                 project_id, credit_type, vintage_year, days=180
@@ -393,57 +432,66 @@ class PricingService:
                 return {"error": "Insufficient historical data for forecasting"}
             df = pd.DataFrame(historical_data)
             df["date"] = pd.to_datetime(df["date"])
-            df = df.sort_values("date")
-            df["price_lag1"] = df["price"].shift(1)
-            df["price_lag7"] = df["price"].shift(7)
-            df["price_ma7"] = df["price"].rolling(window=7).mean()
-            df["price_ma30"] = df["price"].rolling(window=30).mean()
-            df["volatility"] = df["price"].rolling(window=7).std()
-            df["day_of_week"] = df["date"].dt.dayofweek
-            df["day_of_month"] = df["date"].dt.day
-            df = df.dropna()
-            if len(df) < 20:
+            daily = (
+                df.groupby("date")
+                .apply(
+                    lambda g: float(
+                        np.average(g["price"], weights=g["volume"].clip(lower=1e-9))
+                    ),
+                    include_groups=False,
+                )
+                .sort_index()
+            )
+            if len(daily) < 20:
                 return {"error": "Insufficient clean data for forecasting"}
-            feature_columns = [
-                "price_lag1",
-                "price_lag7",
-                "price_ma7",
-                "price_ma30",
-                "volatility",
-                "day_of_week",
-                "day_of_month",
-            ]
-            X = df[feature_columns].values
-            y = df["price"].values
-            scaler = StandardScaler()
-            X_scaled = scaler.fit_transform(X)
-            model = LinearRegression()
-            model.fit(X_scaled, y)
+            log_prices = np.log(daily.to_numpy(dtype=float))
+            window = min(len(log_prices), 60)
+            x = np.arange(window)
+            slope, intercept = np.polyfit(x, log_prices[-window:], 1)
+            fitted = intercept + slope * x
+            residual_std = float(np.std(log_prices[-window:] - fitted, ddof=2))
+            damping = 0.97
             forecast_dates = []
             forecast_prices = []
-            last_date = df["date"].iloc[-1]
-            last_features = X_scaled[-1:].copy()
-            for i in range(forecast_days):
-                next_price = model.predict(last_features)[0]
-                next_date = last_date + timedelta(days=i + 1)
-                forecast_dates.append(next_date.isoformat())
-                forecast_prices.append(float(next_price))
-                last_features[0][0] = next_price
-            current_price = float(df["price"].iloc[-1])
-            forecast_mean = np.mean(forecast_prices)
-            forecast_std = np.std(forecast_prices)
+            lower = []
+            upper = []
+            level = log_prices[-1]
+            step = slope
+            last_date = daily.index[-1]
+            for i in range(1, forecast_days + 1):
+                step *= damping
+                level += step
+                band = 1.96 * residual_std * float(np.sqrt(i))
+                forecast_dates.append((last_date + timedelta(days=i)).isoformat())
+                forecast_prices.append(float(np.exp(level)))
+                lower.append(float(np.exp(level - band)))
+                upper.append(float(np.exp(level + band)))
+            current_price = float(daily.iloc[-1])
+            forecast_mean = float(np.mean(forecast_prices))
+            total_return = forecast_prices[-1] / current_price - 1.0
+            if total_return > 0.0025:
+                trend = "bullish"
+            elif total_return < -0.0025:
+                trend = "bearish"
+            else:
+                trend = "neutral"
+            total_var = float(np.var(log_prices[-window:]))
+            r_squared = 1.0 - (residual_std**2 / total_var) if total_var > 0 else 0.0
             return {
+                "engine": "damped_trend",
                 "current_price": current_price,
                 "forecast": {
                     "dates": forecast_dates,
                     "prices": forecast_prices,
+                    "lower": lower,
+                    "upper": upper,
                     "mean": forecast_mean,
-                    "std": forecast_std,
-                    "trend": "bullish" if forecast_mean > current_price else "bearish",
+                    "std": float(np.std(forecast_prices)),
+                    "trend": trend,
                 },
                 "model_performance": {
-                    "r2_score": model.score(X_scaled, y),
-                    "training_samples": len(df),
+                    "r2_score": r_squared,
+                    "training_samples": int(len(daily)),
                 },
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
@@ -538,16 +586,16 @@ class PricingService:
     ) -> List[Dict[str, Any]]:
         """Get historical price data"""
         try:
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+            cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).replace(
+                tzinfo=None
+            )
             query = db.session.query(Trade).filter(
                 Trade.status == TradeStatus.SETTLED, Trade.executed_at >= cutoff_date
             )
             if project_id:
                 query = query.filter(Trade.project_id == project_id)
             elif credit_type:
-                query = query.join(CarbonCredit).filter(
-                    CarbonCredit.credit_type == credit_type
-                )
+                query = query.filter(Trade.credit_type == credit_type)
             if vintage_year:
                 query = query.filter(Trade.vintage_year == vintage_year)
             trades = query.order_by(Trade.executed_at).all()

@@ -90,8 +90,8 @@ services:
   # ------------------------------------------------------------
   backend:
     build:
-      context: ../code/backend
-      dockerfile: ../../infrastructure/docker/Dockerfile.backend
+      context: ../code
+      dockerfile: ../infrastructure/docker/Dockerfile.backend
       target: runtime
     image: carbonxchange-backend:dev
     container_name: carbonxchange-backend
@@ -118,10 +118,13 @@ services:
       MARKETPLACE_CONTRACT_ADDRESS: ${MARKETPLACE_CONTRACT_ADDRESS:-}
       PAYMENT_TOKEN_CONTRACT_ADDRESS: ${PAYMENT_TOKEN_CONTRACT_ADDRESS:-}
       CONTRACT_ABI_DIR: ${CONTRACT_ABI_DIR:-/app/contracts_abi}
+      FEATURE_AI_FORECASTING: ${FEATURE_AI_FORECASTING:-true}
+      AI_MODELS_DIR: ${AI_MODELS_DIR:-/app/ai_models/models}
     ports:
       - "127.0.0.1:5000:5000"
     volumes:
       - /tmp:/tmp
+      - ai-models-data:/app/ai_models/models
     networks:
       - backend-net
       - frontend-net
@@ -224,6 +227,7 @@ networks:
     driver: bridge
 
 volumes:
+  ai-models-data:
   db-data:
     driver: local
   redis-data:

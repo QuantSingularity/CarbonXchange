@@ -33,20 +33,22 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Create logs and uploads directories
-RUN mkdir -p /app/logs /app/uploads
+RUN mkdir -p /app/logs /app/uploads /app/ai_models/models
 
 # Install Python dependencies
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 # Copy project source
-COPY src/ ./src/
+COPY backend/src/ ./src/
+
+COPY ai_models/ ./ai_models/
 
 # Optional pre-compiled contract ABIs for on-chain calls (see
 # contracts_abi/README.md - the directory always exists, at minimum with
 # just that README, so this COPY never fails on a clean checkout).
-COPY contracts_abi/ ./contracts_abi/
+COPY backend/contracts_abi/ ./contracts_abi/
 
 # Create non-root user for security
 RUN addgroup --system --gid 1001 appgroup \

@@ -5,7 +5,7 @@ Implements sophisticated trading algorithms and risk management for financial ma
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
@@ -15,8 +15,9 @@ import pandas as pd
 
 from ..models import db
 from ..models.carbon_credit import CarbonCredit
-from ..models.market import MarketData, PriceHistory
+from ..models.market import MarketData
 from ..models.trading import Order, OrderSide, OrderType, Portfolio
+from .market_data_service import MarketDataService
 from .pricing_service import PricingService
 from .risk_service import RiskService
 
@@ -482,39 +483,11 @@ class AdvancedTradingService:
             return {}
 
     def _get_price_history(self, symbol: str, days: int = 30) -> pd.DataFrame:
-        """Get price history as pandas DataFrame"""
         try:
-            end_date = datetime.now(timezone.utc)
-            start_date = end_date - timedelta(days=days)
-            price_history = (
-                PriceHistory.query.filter(
-                    PriceHistory.symbol == symbol,
-                    PriceHistory.timestamp >= start_date,
-                    PriceHistory.timestamp <= end_date,
-                )
-                .order_by(PriceHistory.timestamp)
-                .all()
-            )
-            if not price_history:
-                dates = pd.date_range(start=start_date, end=end_date, freq="D")
-                prices = np.random.normal(100, 5, len(dates))
-                return pd.DataFrame(
-                    {
-                        "timestamp": dates,
-                        "close": prices,
-                        "volume": np.random.normal(1000, 200, len(dates)),
-                    }
-                )
-            data = []
-            for record in price_history:
-                data.append(
-                    {
-                        "timestamp": record.timestamp,
-                        "close": float(record.close_price),
-                        "volume": float(record.volume or 0),
-                    }
-                )
-            return pd.DataFrame(data)
+            series = MarketDataService().get_daily_series(symbol, days)
+            if series.empty:
+                return pd.DataFrame()
+            return series.rename(columns={"price": "close"}).reset_index(drop=True)
         except Exception as e:
             logger.error(f"Error getting price history for {symbol}: {e}")
             return pd.DataFrame()

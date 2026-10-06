@@ -256,14 +256,14 @@ def get_order_book_depth(symbol: str) -> Any:
 
     bids = (
         Order.query.filter_by(status=OrderStatus.OPEN, side=OrderSide.BUY)
-        .filter(Order.price.isnot(None))
+        .filter(Order.credit_type == symbol, Order.price.isnot(None))
         .order_by(Order.price.desc())
         .limit(depth_levels)
         .all()
     )
     asks = (
         Order.query.filter_by(status=OrderStatus.OPEN, side=OrderSide.SELL)
-        .filter(Order.price.isnot(None))
+        .filter(Order.credit_type == symbol, Order.price.isnot(None))
         .order_by(Order.price.asc())
         .limit(depth_levels)
         .all()

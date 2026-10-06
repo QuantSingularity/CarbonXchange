@@ -54,7 +54,13 @@ class BaseConfig:
     RATELIMIT_AUTH_REGISTER = "3 per minute"
     RATELIMIT_TRADING_ORDER = "100 per minute"
     RATELIMIT_MARKET_DATA = "1000 per minute"
-    CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
+    CORS_ORIGINS = [
+        origin.strip()
+        for origin in os.getenv(
+            "CORS_ORIGINS", "http://localhost:3000,http://localhost:5173"
+        ).split(",")
+        if origin.strip()
+    ]
     CORS_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
     CORS_ALLOW_HEADERS = [
         "Content-Type",
@@ -158,6 +164,13 @@ class BaseConfig:
     FEATURE_REAL_TIME_NOTIFICATIONS = (
         os.getenv("FEATURE_REAL_TIME_NOTIFICATIONS", "true").lower() == "true"
     )
+    FEATURE_AI_FORECASTING = (
+        os.getenv("FEATURE_AI_FORECASTING", "true").lower() == "true"
+    )
+    AI_MODELS_DIR = os.getenv("AI_MODELS_DIR") or None
+    AI_FORECAST_DEFAULT_HORIZON = int(os.getenv("AI_FORECAST_DEFAULT_HORIZON", "7"))
+    AI_FORECAST_MAX_HORIZON = int(os.getenv("AI_FORECAST_MAX_HORIZON", "90"))
+    AI_FORECAST_HISTORY_DAYS = int(os.getenv("AI_FORECAST_HISTORY_DAYS", "365"))
     CACHE_TYPE = "redis"
     CACHE_REDIS_URL = os.getenv("CACHE_REDIS_URL", "redis://localhost:6379/4")
     CACHE_DEFAULT_TIMEOUT = 300
@@ -295,8 +308,10 @@ class ProductionConfig(BaseConfig):
             raise ValueError(
                 "WEB3_PRIVATE_KEY environment variable is required in production"
             )
-        if cls.SECRET_KEY == "dev-secret-key":
-            raise ValueError("SECRET_KEY must be changed in production")
+        if not os.getenv("SECRET_KEY") or not os.getenv("JWT_SECRET_KEY"):
+            raise ValueError(
+                "SECRET_KEY and JWT_SECRET_KEY environment variables are required in production"
+            )
         required_contracts = [
             "CARBON_TOKEN_CONTRACT_ADDRESS",
             "MARKETPLACE_CONTRACT_ADDRESS",
@@ -313,7 +328,7 @@ class ProductionConfig(BaseConfig):
 class StagingConfig(ProductionConfig):
     """Staging environment configuration"""
 
-    DEBUG = True
+    DEBUG = False
     ENV = "staging"
     RATELIMIT_DEFAULT = "500 per hour"
     RATELIMIT_AUTH_LOGIN = "20 per minute"

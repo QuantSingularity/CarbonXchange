@@ -4,6 +4,7 @@ import { Users, Activity, Unlock, ShieldAlert } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge, EmptyState, ErrorState } from "@/components/StatusPieces";
 import { StatCard } from "@/components/StatCard";
+import { AiModelsPanel } from "@/components/AiModelsPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -164,6 +165,7 @@ export function Admin() {
         <TabsList>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="platform">Platform</TabsTrigger>
+          <TabsTrigger value="ai">AI models</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="mt-4">
@@ -357,6 +359,10 @@ export function Admin() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="ai" className="mt-4">
+          <AiModelsPanel />
         </TabsContent>
       </Tabs>
     </div>

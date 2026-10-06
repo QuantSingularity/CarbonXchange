@@ -22,6 +22,7 @@ from src.routes.admin import admin_bp
 from src.routes.auth import auth_bp
 from src.routes.carbon_credits import carbon_credits_bp
 from src.routes.compliance import compliance_bp
+from src.routes.forecast import forecast_bp
 from src.routes.market import market_bp
 from src.routes.trading import trading_bp
 from src.routes.user import user_bp
@@ -74,20 +75,20 @@ def create_app(config_name: Optional[str] = None) -> Flask:
         logger.info("Rate limiting enabled with Redis storage")
     except Exception as e:
         logger.warning(f"Redis not available for rate limiting: {e}")
-        # Disable rate limiting when Redis is not available
         Limiter(
             get_remote_address,
             app=app,
-            default_limits=[],  # Empty list disables rate limiting
-            enabled=False,
+            storage_uri="memory://",
+            default_limits=[app.config["RATELIMIT_DEFAULT"]],
         )
-        logger.info("Rate limiting disabled (Redis not available)")
+        logger.info("Rate limiting using in-memory storage (Redis not available)")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(user_bp, url_prefix="/api/users")
     app.register_blueprint(carbon_credits_bp, url_prefix="/api/carbon-credits")
     app.register_blueprint(trading_bp, url_prefix="/api/trading")
     app.register_blueprint(market_bp, url_prefix="/api/market")
     app.register_blueprint(compliance_bp, url_prefix="/api/compliance")
+    app.register_blueprint(forecast_bp, url_prefix="/api/forecast")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
 
     @app.before_request
@@ -233,6 +234,7 @@ def create_app(config_name: Optional[str] = None) -> Flask:
                     "Market Data & Analytics",
                     "Compliance & Reporting",
                     "Blockchain Integration",
+                    "AI Price and Demand Forecasting",
                 ],
                 "endpoints": {
                     "auth": "/api/auth",
@@ -241,6 +243,7 @@ def create_app(config_name: Optional[str] = None) -> Flask:
                     "trading": "/api/trading",
                     "market": "/api/market",
                     "compliance": "/api/compliance",
+                    "forecast": "/api/forecast",
                     "admin": "/api/admin",
                 },
             }

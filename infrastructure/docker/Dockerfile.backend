@@ -11,7 +11,7 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir --prefix=/install -r requirements.txt
 
@@ -35,16 +35,17 @@ RUN groupadd -g 10001 appgroup && \
 WORKDIR /app
 
 COPY --from=deps /install /usr/local
-COPY --chown=appuser:appgroup src/ ./src/
+COPY --chown=appuser:appgroup backend/src/ ./src/
+COPY --chown=appuser:appgroup ai_models/ ./ai_models/
 
 # Optional pre-compiled contract ABIs for on-chain calls (see
 # code/backend/contracts_abi/README.md - the directory always exists, at
 # minimum with just that README, so this COPY never fails on a clean
 # checkout).
-COPY --chown=appuser:appgroup contracts_abi/ ./contracts_abi/
+COPY --chown=appuser:appgroup backend/contracts_abi/ ./contracts_abi/
 
-RUN mkdir -p /tmp /app/.cache /app/logs /app/uploads && \
-    chown -R appuser:appgroup /tmp /app/.cache /app/logs /app/uploads
+RUN mkdir -p /tmp /app/.cache /app/logs /app/uploads /app/ai_models/models && \
+    chown -R appuser:appgroup /tmp /app/.cache /app/logs /app/uploads /app/ai_models
 
 USER 10001
 

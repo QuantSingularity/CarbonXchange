@@ -6,7 +6,7 @@ Implements enterprise-grade authentication with financial industry security stan
 import hashlib
 import logging
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 import pyotp
@@ -520,7 +520,6 @@ class AuthService:
             if not user:
                 return True
             reset_token = secrets.token_urlsafe(32)
-            reset_expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
             if self.redis_client:
                 self.redis_client.setex(f"password_reset:{reset_token}", 3600, user.id)
             self.audit_service.log_event(
@@ -647,12 +646,12 @@ class AuthService:
             "is_verified": user.is_verified,
         }
         return create_access_token(
-            identity=user.id, additional_claims=additional_claims
+            identity=user.uuid, additional_claims=additional_claims
         )
 
     def _create_refresh_token(self, user: User) -> str:
         """Create JWT refresh token"""
-        return create_refresh_token(identity=user.id)
+        return create_refresh_token(identity=user.uuid)
 
     def _create_session(
         self, user: User, access_token: str, refresh_token: str

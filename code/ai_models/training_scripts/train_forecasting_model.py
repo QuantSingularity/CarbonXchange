@@ -1,37 +1,9 @@
-import logging
-import os
-from typing import Any
+import sys
+from pathlib import Path
 
-import pandas as pd
-from joblib import dump
-from sklearn.ensemble import RandomForestRegressor
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
-
-
-def train_model() -> Any:
-    data_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-        "resources",
-        "datasets",
-        "market_demand.csv",
-    )
-    data = pd.read_csv(data_path)
-    X = data[["historical_price", "trading_volume", "season"]]
-    y = data["demand"]
-    model = RandomForestRegressor(n_estimators=100)
-    model.fit(X, y)
-    model_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "demand_forecasting_model.pkl",
-    )
-    dump(model, model_path)
-    logger.info(f"Model saved to {model_path}")
-
+from ai_models.training.demand import main
 
 if __name__ == "__main__":
-    train_model()
+    raise SystemExit(main())

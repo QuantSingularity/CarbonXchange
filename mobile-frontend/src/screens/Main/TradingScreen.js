@@ -14,6 +14,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
+import ForecastCard from "../../components/ForecastCard";
 import { marketApi, tradingApi, apiErrorMessage } from "../../services/api";
 import { formatCurrency, formatNumber, humanize } from "../../utils/format";
 import theme from "../../styles/theme";
@@ -233,6 +234,8 @@ const TradingScreen = () => {
                 )}
               </Card>
             </View>
+
+            <ForecastCard symbol={symbol} />
           </>
         ) : (
           <Card style={styles.hintCard}>

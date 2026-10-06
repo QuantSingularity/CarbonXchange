@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Search, TrendingUp, TrendingDown, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/StatusPieces";
+import { ForecastPanel } from "@/components/ForecastPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -335,6 +336,8 @@ export function Trade() {
                   </CardContent>
                 </Card>
               </div>
+
+              <ForecastPanel symbol={symbol} />
             </>
           )}
         </div>

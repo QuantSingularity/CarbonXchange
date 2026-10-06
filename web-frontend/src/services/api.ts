@@ -95,6 +95,13 @@ apiClient.interceptors.response.use(
   },
 );
 
+export function apiErrorCode(error: unknown): string | undefined {
+  if (axios.isAxiosError(error)) {
+    return (error.response?.data as { code?: string } | undefined)?.code;
+  }
+  return undefined;
+}
+
 export function apiErrorMessage(
   error: unknown,
   fallback = "Something went wrong. Please try again.",
@@ -486,6 +493,68 @@ export interface SystemInfo {
   carbon: { projects: number; credits: number };
 }
 
+export interface ForecastPoint {
+  step: number;
+  timestamp: string;
+  predicted_price: number;
+  lower: number;
+  upper: number;
+  expected_return: number;
+}
+
+export interface ForecastModelInfo {
+  trained_at?: string | null;
+  source?: string | null;
+  training_samples?: number | null;
+  directional_accuracy?: number | null;
+  price_mape?: number | null;
+  price_mae?: number | null;
+  return_r2?: number | null;
+}
+
+export interface PriceForecast {
+  symbol?: string | null;
+  model: string;
+  engine?: string;
+  horizon: number;
+  current_price: number;
+  last_timestamp: string;
+  predictions: ForecastPoint[];
+  expected_return_pct: number;
+  trend: "bullish" | "bearish" | "neutral";
+  history_points: number;
+  contributing_factors: Record<string, number>;
+  model_info: ForecastModelInfo;
+}
+
+export interface ForecastStatus {
+  enabled: boolean;
+  price_model: {
+    ready: boolean;
+    available_models?: string[];
+    trained_at?: string | null;
+    source?: string | null;
+    samples?: number | null;
+    metrics?: Record<string, Record<string, number>> | null;
+  };
+  demand_model: {
+    ready: boolean;
+    trained_at?: string | null;
+    samples?: number | null;
+    metrics?: Record<string, number> | null;
+  };
+  symbols: Record<string, number>;
+  min_history_points: number;
+  max_horizon: number;
+}
+
+export interface DemandForecast {
+  predicted_demand: number;
+  inputs: { price: number; volume: number; season: string };
+}
+
+export type Season = "winter" | "spring" | "summer" | "autumn";
+
 export interface Paginated {
   total: number;
   pages: number;
@@ -758,6 +827,42 @@ export const marketApi = {
   async health() {
     const { data } = await apiClient.get("/market/health");
     return data as { status: string; latest_data_age_seconds?: number };
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/* AI forecasting                                                      */
+/* ------------------------------------------------------------------ */
+
+export const forecastApi = {
+  async status() {
+    const { data } = await apiClient.get("/forecast/status");
+    return data as ForecastStatus;
+  },
+
+  async price(
+    symbol: string,
+    params: { horizon?: number; model?: string } = {},
+  ) {
+    const { data } = await apiClient.get(
+      `/forecast/price/${encodeURIComponent(symbol)}`,
+      { params },
+    );
+    return data as PriceForecast;
+  },
+
+  async demand(payload: { price: number; volume: number; season: Season }) {
+    const { data } = await apiClient.post("/forecast/demand", payload);
+    return data as DemandForecast;
+  },
+
+  async train(payload: {
+    model: "price" | "demand";
+    source?: "database" | "synthetic";
+    symbol?: string;
+  }) {
+    const { data } = await apiClient.post("/forecast/train", payload);
+    return data as { message: string; result: Record<string, unknown> };
   },
 };
 
