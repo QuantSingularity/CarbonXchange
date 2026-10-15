@@ -204,8 +204,6 @@ jobs:
         include:
           - name: backend
             dockerfile: code/backend/Dockerfile
-          - name: backend-hardened
-            dockerfile: infrastructure/docker/Dockerfile.backend
 
     env:
       IMAGE_TAG: carbonxchange-${{ matrix.name }}:ci
