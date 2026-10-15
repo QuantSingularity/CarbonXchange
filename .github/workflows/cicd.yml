@@ -80,27 +80,12 @@ jobs:
           cache: "npm"
           cache-dependency-path: code/blockchain/package-lock.json
 
-      # NOTE: `npm ci` fails hard here with EBADPLATFORM on fsevents@2.3.2
-      # (a macOS-only optional transitive dependency) - npm ci enforces
-      # strict lockfile fidelity and doesn't skip it gracefully on Linux
-      # runners the way `npm install` does. Use `npm install` for this
-      # package specifically.
       - name: Install dependencies
         run: npm install
 
       - name: Compile contracts
         run: npx truffle compile
 
-      # truffle-config.js defines an explicit `development` network
-      # (127.0.0.1:8545), so `truffle test` always tries to connect to a
-      # real node there rather than auto-launching its own ephemeral
-      # chain - Ganache has to be started ourselves.
-      #
-      # `ganache` is pinned as an explicit devDependency (matching the
-      # version Truffle itself bundles) so `npx ganache` always resolves
-      # to that local, known-good copy instead of anything ambiguous.
-      # Explicit wallet sizing/balance/gas limit are defensive measures
-      # against the process running out of test ETH mid-suite.
       - name: Start Ganache
         run: |
           npx ganache \
@@ -207,6 +192,99 @@ jobs:
           name: backend-coverage-report
           path: code/backend/coverage.xml
           retention-days: 30
+
+  backend_build:
+    name: Backend Build (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    needs: backend_tests
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            dockerfile: code/backend/Dockerfile
+          - name: backend-hardened
+            dockerfile: infrastructure/docker/Dockerfile.backend
+
+    env:
+      IMAGE_TAG: carbonxchange-${{ matrix.name }}:ci
+      CONTAINER_NAME: carbonxchange-${{ matrix.name }}-smoke
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: code
+          file: ${{ matrix.dockerfile }}
+          push: false
+          load: true
+          tags: ${{ env.IMAGE_TAG }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+      - name: Verify image contents
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint python "${IMAGE_TAG}" -c \
+            "import ai_models, gevent, gunicorn; print('ai_models', ai_models.__version__)"
+          docker run --rm --entrypoint sh "${IMAGE_TAG}" -c \
+            "test -w /app/ai_models/models && test -w /app/logs"
+
+      - name: Start container
+        run: |
+          set -euo pipefail
+          docker run -d \
+            --name "${CONTAINER_NAME}" \
+            -p 127.0.0.1:5000:5000 \
+            -e SECRET_KEY="$(openssl rand -hex 32)" \
+            -e JWT_SECRET_KEY="$(openssl rand -hex 32)" \
+            -e WEB3_PRIVATE_KEY="0x$(openssl rand -hex 32)" \
+            -e DATABASE_URL="sqlite:////tmp/ci.db" \
+            -e CARBON_TOKEN_CONTRACT_ADDRESS=0x0000000000000000000000000000000000000001 \
+            -e MARKETPLACE_CONTRACT_ADDRESS=0x0000000000000000000000000000000000000002 \
+            -e PAYMENT_TOKEN_CONTRACT_ADDRESS=0x0000000000000000000000000000000000000003 \
+            "${IMAGE_TAG}"
+
+      - name: Wait for health check
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5000/api/health > /dev/null; then
+              echo "Backend is healthy."
+              exit 0
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' "${CONTAINER_NAME}")" != "true" ]; then
+              break
+            fi
+            sleep 2
+          done
+          echo "Backend failed to become healthy."
+          exit 1
+
+      - name: Verify forecast API is registered
+        run: |
+          set -euo pipefail
+          status=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/api/forecast/status)
+          if [ "${status}" != "401" ]; then
+            echo "Expected 401 from the unauthenticated forecast status route, got ${status}."
+            exit 1
+          fi
+
+      - name: Show container logs
+        if: failure()
+        run: |
+          docker logs "${CONTAINER_NAME}" || true
+          docker exec "${CONTAINER_NAME}" sh -c "tail -n 100 /app/logs/error.log" || true
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f "${CONTAINER_NAME}" || true
 
   # ============================================================
   # Job 5 -- Web Frontend Build
