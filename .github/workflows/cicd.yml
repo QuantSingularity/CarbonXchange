@@ -193,6 +193,9 @@ jobs:
           path: code/backend/coverage.xml
           retention-days: 30
 
+  # ==========================
+  # Job 5 -- Backend Build
+  # ==========================
   backend_build:
     name: Backend Build (${{ matrix.name }})
     runs-on: ubuntu-latest
@@ -285,7 +288,7 @@ jobs:
         run: docker rm -f "${CONTAINER_NAME}" || true
 
   # ============================================================
-  # Job 5 -- Web Frontend Build
+  # Job 6 -- Web Frontend Build
   # ============================================================
   web-frontend_build:
     name: Web-Frontend Build
