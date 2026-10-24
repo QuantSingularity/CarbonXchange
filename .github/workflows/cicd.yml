@@ -58,7 +58,7 @@ jobs:
             --check "**/*.{js,jsx,ts,tsx,json,html,css,md,sol,yml,yaml}"
 
   # ============================================================
-  # Job 3 -- Smart Contract Compile & Test (Truffle / Solidity)
+  # Job 2 -- Smart Contract Compile & Test (Truffle / Solidity)
   # ============================================================
   contracts_test:
     name: Smart Contract Tests
@@ -145,7 +145,7 @@ jobs:
           retention-days: 7
 
   # ============================================================
-  # Job 4 -- Backend Tests (Python / Pytest)
+  # Job 3 -- Backend Tests (Python / Pytest)
   # ============================================================
   backend_tests:
     name: Backend Tests
@@ -194,7 +194,7 @@ jobs:
           retention-days: 30
 
   # ==========================
-  # Job 5 -- Backend Build
+  # Job 4 -- Backend Build
   # ==========================
   backend_build:
     name: Backend Build
@@ -281,10 +281,10 @@ jobs:
         run: docker rm -f "${CONTAINER_NAME}" || true
 
   # ============================================================
-  # Job 6 -- Web Frontend Build
+  # Job 5 -- Web Frontend Test & Build
   # ============================================================
-  web-frontend_build:
-    name: Web-Frontend Build
+  web-frontend_test_and_build:
+    name: Web-Frontend Test & Build
     runs-on: ubuntu-latest
     needs: code_quality
 
@@ -305,6 +305,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
+
+      - name: Run frontend tests
+        run: CI=true npm test
 
       - name: Build web-frontend
         run: CI=false npm run build
